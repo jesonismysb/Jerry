@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端自适应视口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="奈良的IT书库 - 精选免费优质技术书籍与教程" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>IT书库 · 奈良</title>
+
+  <!-- 网页小图标（与主页一致的内联 SVG） -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 方式，无需构建） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    /* Tailwind 自定义配置（与主页一致） */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#67e8f9' }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ==================== 全局基础样式 ==================== */
+    html, body { height: 100%; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ==================== 毛玻璃卡片（与主页同一套参数） ==================== */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+
+    /* 标签筛选 chips（样式同博客页） */
+    .chip { background: rgba(255, 255, 255, 0.05); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.10); }
+    .chip:hover { color: #67e8f9; border-color: rgba(103, 232, 249, 0.4); }
+    .chip.active { background: rgba(8, 145, 178, 0.85); color: #ecfeff; border-color: transparent; }
+    .tag-badge {
+      background: rgba(103, 232, 249, 0.10);
+      color: #67e8f9;
+      border: 1px solid rgba(103, 232, 249, 0.25);
+    }
+
+    /* 搜索输入框 */
+    .search-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      color: #e2e8f0;
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .search-input::placeholder { color: #94a3b8; }
+    .search-input:focus {
+      outline: none;
+      border-color: rgba(103, 232, 249, 0.45);
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+    }
+
+    /* 两行截断 */
+    .clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ==================== 入场动画（与主页一致） ==================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    main > * { animation: fadeUp .7s ease both; }
+    main > *:nth-child(1) { animation-delay: .05s; }
+    main > *:nth-child(2) { animation-delay: .12s; }
+    main > *:nth-child(3) { animation-delay: .19s; }
+
+    /* 书籍卡片逐个淡入 */
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .book-card { animation: cardIn .5s ease both; }
+    /* 封面 hover 轻微放大 */
+    .book-card:hover .book-cover-inner { transform: scale(1.05); }
+    .book-cover-inner { transition: transform .4s ease; }
+
+    /* ==================== Toast 提示 ==================== */
+    #toast {
+      position: fixed; left: 50%; bottom: 32px;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.92);
+      color: #ecfeff; font-size: 14px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .35);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 99; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #bg-overlay { transition: opacity .8s ease; }
+    #bg-overlay.loading {
+      background: linear-gradient(180deg, rgba(2,6,23,.97) 0%, rgba(2,6,23,.92) 50%, rgba(2,6,23,.98) 100%) !important;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <!-- ================================================================ -->
+  <!-- 背景层：动漫壁纸 + 遮罩（与主页同一张壁纸地址）                    -->
+  <!-- ================================================================ -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <div id="bg-overlay" class="absolute inset-0 loading"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- 顶部导航栏：返回首页 + 页面标题                                    -->
+  <!-- ================================================================ -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+      <!-- ① 返回导航主页 -->
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-book-open text-violet-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">奈良 · IT书库</h1>
+      </div>
+      <div class="min-w-[86px]"></div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- ============================================================ -->
+    <!-- 搜索 + 分类筛选工具栏                                          -->
+    <!-- ============================================================ -->
+    <section class="glass-card p-4 sm:p-5">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-cyan-300/70 text-sm"></i>
+        <input id="search-input" type="text" placeholder="搜索书名…"
+               class="search-input w-full rounded-full pl-10 pr-9 py-2.5 text-sm" />
+        <button id="btn-clear" title="清空"
+                class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </div>
+      <!-- 分类筛选（JS 渲染） -->
+      <div id="cate-bar" class="flex flex-wrap gap-2 mt-3.5"></div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 书籍列表                                                       -->
+    <!-- ============================================================ -->
+    <section>
+      <p class="text-xs text-slate-400 mb-3 px-1 flex items-center gap-2">
+        <span class="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-300 to-sky-500 inline-block"></span>
+        <span id="count-text"></span>
+      </p>
+      <div id="book-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      <!-- 空状态 -->
+      <div id="empty-state" class="hidden glass-card p-10 text-center">
+        <i class="fa-solid fa-book text-4xl text-cyan-300/40"></i>
+        <p class="text-sm text-slate-400 mt-3">没有找到相关书籍，换个关键词试试吧～</p>
+      </div>
+    </section>
+
+    <!-- 底部版权 -->
+    <footer class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1">
+      <p>书库为精选的免费正版资源，点击卡片即可前往获取</p>
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a></p>
+    </footer>
+  </main>
+
+  <!-- Toast 提示容器 -->
+  <div id="toast"></div>
+
+  <script>
+  /* ==================================================================
+   *  书籍数据 —— 想新增/修改书籍，直接在下面数组里加对象即可
+   *  字段：title 书名 | author 作者 | category 分类（用于筛选）
+   *        tags 展示标签 | intro 简介 | url 下载/获取链接（点击卡片跳转）
+   *        icon 封面图标（Font Awesome 类名） | c1/c2 封面渐变色
+   *  说明：默认收录的是免费正版资源；换成自己的网盘/直链即可
+   * ================================================================== */
+  const BOOKS = [
+    {
+      title: 'Hello 算法', author: 'krahets', category: '算法', tags: ['算法', '数据结构'],
+      intro: '像小说一样好看的算法与数据结构可视化教程，动画图解、一键运行，零基础友好。',
+      url: 'https://www.hello-algo.com/', icon: 'fa-solid fa-layer-group', c1: '#0891b2', c2: '#1d4ed8'
+    },
+    {
+      title: 'Pro Git（中文版）', author: 'Scott Chacon · Ben Straub', category: '工具', tags: ['Git', '版本控制'],
+      intro: 'Git 官方出品的中译本书籍，从版本控制基本概念到分支模型、分布式协作，系统又透彻。',
+      url: 'https://git-scm.com/book/zh/v2', icon: 'fa-solid fa-code-branch', c1: '#ea580c', c2: '#b91c1c'
+    },
+    {
+      title: '鸟哥的Linux私房菜', author: '鸟哥', category: '操作系统', tags: ['Linux', '入门'],
+      intro: '华语世界最经典的 Linux 入门书之一，从安装系统到 Shell 脚本，手把手带你跨过第一道门槛。',
+      url: 'https://linux.vbird.org/', icon: 'fa-brands fa-linux', c1: '#1e40af', c2: '#0f766e'
+    },
+    {
+      title: 'The Linux Command Line', author: 'William Shotts', category: '操作系统', tags: ['Linux', '命令行'],
+      intro: '专注命令行本身的中译本经典，读完就能把终端用得像母语一样自然。',
+      url: 'http://linuxcommand.org/tlcl.php', icon: 'fa-solid fa-terminal', c1: '#334155', c2: '#0f172a'
+    },
+    {
+      title: '现代 JavaScript 教程', author: 'Ilya Kantor', category: '前端', tags: ['JavaScript', '前端'],
+      intro: '从基础语法到事件循环、原型链、模块化，覆盖现代 JavaScript 的方方面面，持续更新。',
+      url: 'https://zh.javascript.info/', icon: 'fa-brands fa-js', c1: '#ca8a04', c2: '#b45309'
+    },
+    {
+      title: 'Eloquent JavaScript', author: 'Marijn Haverbeke', category: '前端', tags: ['JavaScript', '前端'],
+      intro: '用讲故事的笔法教 JavaScript，附带可交互的在线练习，适合系统过一遍语言核心。',
+      url: 'https://eloquentjavascript.net/', icon: 'fa-solid fa-feather-pointed', c1: '#d97706', c2: '#92400e'
+    },
+    {
+      title: 'You Dont Know JS', author: 'Kyle Simpson', category: '前端', tags: ['JavaScript', '进阶'],
+      intro: '深入探讨闭包、this、原型等 JavaScript 最容易被误解的核心机制，进阶必读。',
+      url: 'https://github.com/getify/You-Dont-Know-JS', icon: 'fa-brands fa-js', c1: '#7c3aed', c2: '#4c1d95'
+    },
+    {
+      title: 'Go 语言圣经（中文版）', author: 'Alan A. A. Donovan · Brian W. Kernighan', category: '后端', tags: ['Go', '后端'],
+      intro: 'Go 官方团队参与审校的 The Go Programming Language 中译本，语言规范与工程实践并重。',
+      url: 'https://gopl-zh.github.io/', icon: 'fa-brands fa-golang', c1: '#0e7490', c2: '#164e63'
+    },
+    {
+      title: 'Python 官方教程（中文）', author: 'Python Software Foundation', category: '后端', tags: ['Python', '后端'],
+      intro: 'Python 官方中文教程，权威、准确、紧跟版本，入门到进阶的第一手资料。',
+      url: 'https://docs.python.org/zh-cn/3/tutorial/', icon: 'fa-brands fa-python', c1: '#2563eb', c2: '#0e7490'
+    },
+    {
+      title: 'MDN Web 文档', author: 'Mozilla', category: '前端', tags: ['Web', '参考手册'],
+      intro: 'Web 技术的官方参考文档，HTML / CSS / JS 的任何 API 疑问，先查它准没错。',
+      url: 'https://developer.mozilla.org/zh-CN/', icon: 'fa-brands fa-firefox-browser', c1: '#111827', c2: '#1d4ed8'
+    },
+    {
+      title: 'CS 自学指南', author: 'pkuflyingpig', category: '学习路线', tags: ['CS', '公开课'],
+      intro: '精选全球名校公开课的 CS 自学路线图，附学习顺序、资料索引与避坑建议。',
+      url: 'https://csdiy.wiki/', icon: 'fa-solid fa-graduation-cap', c1: '#e11d48', c2: '#6d28d9'
+    },
+    {
+      title: 'The Missing Semester', author: 'MIT', category: '工具', tags: ['效率', '开发工具'],
+      intro: 'MIT 出品的科研生存工具课：Shell、Git、调试、性能分析等学校不教但极其有用的技能。',
+      url: 'https://missing-semester-cn.github.io/', icon: 'fa-solid fa-compass', c1: '#0d9488', c2: '#115e59'
+    }
+  ];
+
+  /* ================================================================== */
+  /*  状态与渲染                                                         */
+  /* ================================================================== */
+  const state = { keyword: '', category: '全部' };
+
+  /** 获取全部分类（去重） */
+  function allCategories() {
+    return ['全部', ...new Set(BOOKS.map(b => b.category))];
+  }
+
+  /** 当前筛选命中的书籍 */
+  function filteredBooks() {
+    const kw = state.keyword.trim().toLowerCase();
+    return BOOKS.filter(b => {
+      const okCate = state.category === '全部' || b.category === state.category;
+      const okText = !kw || b.title.toLowerCase().includes(kw);
+      return okCate && okText;
+    });
+  }
+
+  /** 渲染分类筛选条 */
+  function renderCateBar() {
+    const bar = document.getElementById('cate-bar');
+    bar.innerHTML = allCategories().map(c =>
+      `<button data-cate="${c}" class="chip ${c === state.category ? 'active' : ''} text-xs px-3 py-1.5 rounded-full transition-all">${c}</button>`
+    ).join('');
+    bar.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.category = btn.dataset.cate;
+        renderCateBar();
+        renderList();
+      });
+    });
+  }
+
+  /** 渲染书籍列表 */
+  function renderList() {
+    const list = filteredBooks();
+    const box = document.getElementById('book-list');
+    document.getElementById('count-text').textContent =
+      `共收录 ${BOOKS.length} 本，当前显示 ${list.length} 本`;
+    document.getElementById('empty-state').classList.toggle('hidden', list.length > 0);
+
+    box.innerHTML = list.map((b, i) => `
+      <a href="${b.url}" target="_blank" rel="noopener noreferrer" title="点击前往获取"
+         class="book-card glass-card overflow-hidden flex flex-col group" style="animation-delay:${i * 0.05}s">
+        <!-- CSS 渐变封面 -->
+        <div class="relative h-40 overflow-hidden" style="background:linear-gradient(135deg, ${b.c1}, ${b.c2})">
+          <div class="book-cover-inner absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
+            <i class="${b.icon} text-3xl text-white/85 mb-2.5 drop-shadow"></i>
+            <p class="text-white font-bold text-base leading-snug drop-shadow">${b.title}</p>
+          </div>
+          <span class="absolute top-3 left-3 text-[10px] px-2 py-0.5 rounded-full bg-black/30 text-white/90">${b.category}</span>
+          <i class="${b.icon} absolute right-3 bottom-2 text-6xl text-white/10 pointer-events-none"></i>
+        </div>
+        <!-- 信息区 -->
+        <div class="p-4 flex-1 flex flex-col">
+          <h3 class="font-semibold text-[15px] text-slate-100 group-hover:text-cyan-200 transition-colors">${b.title}</h3>
+          <p class="text-xs text-slate-400 mt-1">${b.author}</p>
+          <p class="clamp-2 text-sm text-slate-400 mt-2 leading-relaxed flex-1">${b.intro}</p>
+          <div class="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
+            <div class="flex gap-1.5 flex-wrap">
+              ${b.tags.map(t => `<span class="tag-badge text-[10px] px-2 py-0.5 rounded-full">${t}</span>`).join('')}
+            </div>
+            <span class="shrink-0 inline-flex items-center gap-1 text-xs text-cyan-300
+                         bg-cyan-400/10 border border-cyan-300/25 px-2.5 py-1 rounded-full
+                         group-hover:bg-cyan-400/20 transition-colors">
+              <i class="fa-solid fa-download"></i>获取
+            </span>
+          </div>
+        </div>
+      </a>
+    `).join('');
+  }
+
+  /* ================================================================== */
+  /*  事件绑定与初始化                                                   */
+  /* ================================================================== */
+  function bindEvents() {
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('btn-clear');
+
+    // 输入搜索（简易防抖，300ms 后触发）
+    let timer = null;
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        state.keyword = input.value;
+        clearBtn.classList.toggle('hidden', !input.value);
+        renderList();
+      }, 300);
+    });
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      state.keyword = '';
+      clearBtn.classList.add('hidden');
+      renderList();
+      input.focus();
+    });
+  }
+
+  /* ================================================================== */
+  /*  壁纸加载（与主页相同的异步生成图轮询逻辑）                          */
+  /* ================================================================== */
+  const BG_URL = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+      encodeURIComponent('动漫风格风景壁纸，璀璨星空下的平静湖面，远山与极光，唯美治愈，深蓝青色调，高清4K') +
+      '&image_size=landscape_16_9';
+
+  const PLACEHOLDER_SIZE = 1832, IMG_MAX_RETRY = 8, IMG_RETRY_GAP = 6000;
+
+  function loadBackground() {
+    let tries = 0;
+    const img = document.getElementById('bg-img');
+    function attempt() {
+      const probe = new Image();
+      probe.src = BG_URL + '&_t=' + Date.now();
+      probe.onload = () => {
+        const isPlaceholder = probe.naturalWidth === PLACEHOLDER_SIZE
+                           && probe.naturalHeight === PLACEHOLDER_SIZE;
+        if (isPlaceholder && tries < IMG_MAX_RETRY) { tries++; setTimeout(attempt, IMG_RETRY_GAP); }
+        else {
+          img.src = probe.src; img.style.display = '';
+          document.getElementById('bg-overlay').classList.remove('loading');
+        }
+      };
+      probe.onerror = () => { if (tries < IMG_MAX_RETRY) { tries++; setTimeout(attempt, IMG_RETRY_GAP); } };
+    }
+    attempt();
+  }
+
+  function init() {
+    loadBackground();
+    renderCateBar();
+    renderList();
+    bindEvents();
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  }
+
+  init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端自适应视口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="奈良的博客 - 前端 / 工具 / 随笔 / 读书笔记" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>博客 · 奈良</title>
+
+  <!-- 网页小图标（与主页一致的内联 SVG） -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 方式，无需构建） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    /* Tailwind 自定义配置（与主页一致） */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#67e8f9' }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ==================== 主题变量：暗色（默认）/ 亮色阅读模式 ==================== */
+    :root {
+      --c-main: #e2e8f0;                 /* 主文字 */
+      --c-sub: #94a3b8;                  /* 次级文字 */
+      --c-card: rgba(15, 23, 42, 0.42);  /* 卡片背景（与主页一致） */
+      --c-border: rgba(148, 197, 255, 0.14);
+      --c-chip-bg: rgba(255, 255, 255, 0.05);
+      --c-chip-text: #cbd5e1;
+      --c-chip-border: rgba(255, 255, 255, 0.10);
+      --c-input: rgba(255, 255, 255, 0.05);
+      --c-code-bg: rgba(2, 6, 23, 0.55);
+      --c-code-border: rgba(148, 197, 255, 0.12);
+      --c-code-text: #a5f3fc;
+    }
+    body.light {
+      --c-main: #1e293b;
+      --c-sub: #5b6b7f;
+      --c-card: rgba(255, 255, 255, 0.72);
+      --c-border: rgba(15, 23, 42, 0.10);
+      --c-chip-bg: rgba(15, 23, 42, 0.04);
+      --c-chip-text: #475569;
+      --c-chip-border: rgba(15, 23, 42, 0.10);
+      --c-input: rgba(255, 255, 255, 0.62);
+      --c-code-bg: rgba(15, 23, 42, 0.05);
+      --c-code-border: rgba(15, 23, 42, 0.08);
+      --c-code-text: #0e7490;
+    }
+
+    /* ==================== 全局基础样式 ==================== */
+    html, body { height: 100%; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body.light { background-color: #d8e9f2; }
+
+    /* 语义化文字颜色（便于主题切换） */
+    .t-main { color: var(--c-main); }
+    .t-sub  { color: var(--c-sub); }
+
+    /* ==================== 毛玻璃卡片（与主页同一套参数） ==================== */
+    .glass-card {
+      background: var(--c-card);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--c-border);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease, background .4s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+
+    /* 标签筛选 chips */
+    .chip {
+      background: var(--c-chip-bg);
+      color: var(--c-chip-text);
+      border: 1px solid var(--c-chip-border);
+    }
+    .chip:hover { color: #67e8f9; border-color: rgba(103, 232, 249, 0.4); }
+    .chip.active {
+      background: rgba(8, 145, 178, 0.85);
+      color: #ecfeff;
+      border-color: transparent;
+    }
+    /* 文章内的标签小徽章 */
+    .tag-badge {
+      background: rgba(103, 232, 249, 0.10);
+      color: #67e8f9;
+      border: 1px solid rgba(103, 232, 249, 0.25);
+    }
+
+    /* 搜索输入框 */
+    .search-input {
+      background: var(--c-input);
+      border: 1px solid var(--c-border);
+      color: var(--c-main);
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .search-input::placeholder { color: var(--c-sub); }
+    .search-input:focus {
+      outline: none;
+      border-color: rgba(103, 232, 249, 0.45);
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+    }
+
+    /* 两行截断 */
+    .clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ==================== 入场动画（依次淡入上浮，与主页一致） ==================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-item { animation: fadeUp .7s ease both; }
+    .fade-item:nth-child(1) { animation-delay: .05s; }
+    .fade-item:nth-child(2) { animation-delay: .12s; }
+    .fade-item:nth-child(3) { animation-delay: .19s; }
+
+    /* 文章卡片逐个淡入 */
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .article-card { animation: cardIn .5s ease both; }
+
+    /* ==================== 文章正文排版 ==================== */
+    .article-body p  { margin-bottom: 1rem; line-height: 1.95; font-size: 15px; color: var(--c-sub); }
+    .article-body h2 {
+      margin: 1.6rem 0 .8rem;
+      font-size: 17px; font-weight: 700; color: var(--c-main);
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .article-body h2::before {
+      content: ''; width: 4px; height: 16px; border-radius: 999px;
+      background: linear-gradient(to bottom, #67e8f9, #0ea5e9);
+    }
+    .article-body ul { margin: 0 0 1rem 0; padding-left: 0; list-style: none; }
+    .article-body li {
+      position: relative; padding-left: 1.1rem; margin-bottom: .4rem;
+      line-height: 1.85; font-size: 15px; color: var(--c-sub);
+    }
+    .article-body li::before {
+      content: ''; position: absolute; left: 0; top: .72em;
+      width: 5px; height: 5px; border-radius: 50%; background: #67e8f9;
+    }
+    .article-body blockquote {
+      margin: 0 0 1rem; padding: .65rem 1rem;
+      border-left: 3px solid rgba(103, 232, 249, .55);
+      background: rgba(103, 232, 249, .06);
+      border-radius: 0 .6rem .6rem 0;
+      color: #67e8f9; font-size: 14px; line-height: 1.8;
+    }
+    body.light .article-body blockquote { color: #0e7490; background: rgba(14, 116, 144, .07); }
+    .article-body pre {
+      margin: 0 0 1rem; padding: .9rem 1rem;
+      background: var(--c-code-bg);
+      border: 1px solid var(--c-code-border);
+      border-radius: .8rem; overflow-x: auto;
+    }
+    .article-body pre code {
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 13px; color: var(--c-code-text); line-height: 1.7;
+    }
+
+    /* ==================== Toast / 回到顶部 ==================== */
+    #toast {
+      position: fixed; left: 50%; bottom: 32px;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.92);
+      color: #ecfeff; font-size: 14px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .35);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 99; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #btn-top {
+      position: fixed; right: 20px; bottom: 24px; z-index: 50;
+      width: 42px; height: 42px; border-radius: 50%;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 197, 255, 0.2);
+      color: #67e8f9;
+      opacity: 0; pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity .3s ease, transform .3s ease, border-color .3s ease;
+    }
+    #btn-top.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    #btn-top:hover { border-color: rgba(103, 232, 249, 0.5); }
+
+    /* 顶栏（亮色模式覆盖） */
+    body.light .topbar { background: rgba(240, 249, 255, 0.65); border-color: rgba(15, 23, 42, 0.08); }
+    body.light .topbar .bar-text { color: #1e293b; }
+    body.light .topbar .bar-icon { color: #0891b2; }
+    /* 亮色模式下的遮罩变浅，让白墙质感透出来 */
+    body.light #bg-overlay { background: linear-gradient(180deg, rgba(235,246,252,.86) 0%, rgba(235,246,252,.7) 45%, rgba(235,246,252,.9) 100%) !important; }
+    #bg-overlay { transition: opacity .8s ease; }
+    #bg-overlay.loading {
+      background: linear-gradient(180deg, rgba(2,6,23,.97) 0%, rgba(2,6,23,.92) 50%, rgba(2,6,23,.98) 100%) !important;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- ================================================================ -->
+  <!-- 背景层：动漫壁纸 + 遮罩（与主页同一张壁纸地址）                    -->
+  <!-- ================================================================ -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <div id="bg-overlay" class="absolute inset-0 loading"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- 顶部导航栏：返回首页 + 页面标题 + 主题切换                        -->
+  <!-- ================================================================ -->
+  <header class="topbar sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+      <!-- ① 返回导航主页 -->
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-feather text-cyan-300/90 bar-icon"></i>
+        <h1 class="text-sm sm:text-base font-semibold truncate bar-text" style="color:var(--c-main)">奈良 · 博客</h1>
+      </div>
+      <!-- 暗色 / 亮色阅读模式切换 -->
+      <button id="btn-theme" title="切换阅读模式"
+              class="min-w-[86px] flex justify-end">
+        <span class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
+                     hover:bg-cyan-400/20 hover:text-cyan-300 text-slate-300 transition-all">
+          <i id="icon-theme" class="fa-solid fa-sun"></i>
+        </span>
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- ============================================================ -->
+    <!-- 列表视图                                                       -->
+    <!-- ============================================================ -->
+    <div id="view-list">
+
+      <!-- 搜索 + 标签筛选工具栏 -->
+      <section class="glass-card p-4 sm:p-5 fade-item">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-cyan-300/70 text-sm"></i>
+          <input id="search-input" type="text" placeholder="搜索文章关键词…"
+                 class="search-input w-full rounded-full pl-10 pr-9 py-2.5 text-sm" />
+          <button id="btn-clear" title="清空"
+                  class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-cyan-300 transition-colors">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </button>
+        </div>
+        <!-- 标签筛选（JS 渲染） -->
+        <div id="tag-bar" class="flex flex-wrap gap-2 mt-3.5"></div>
+      </section>
+
+      <!-- 文章列表 -->
+      <section class="fade-item">
+        <p id="list-count" class="text-xs text-slate-400 mb-3 px-1 flex items-center gap-2">
+          <span class="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-300 to-sky-500 inline-block"></span>
+          <span id="count-text"></span>
+        </p>
+        <div id="article-list" class="grid sm:grid-cols-2 gap-3 sm:gap-4"></div>
+        <!-- 空状态 -->
+        <div id="empty-state" class="hidden glass-card p-10 text-center">
+          <i class="fa-solid fa-folder-open text-4xl text-cyan-300/40"></i>
+          <p class="t-sub text-sm mt-3">没有找到相关文章，换个关键词试试吧～</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 详情视图（阅读体验优先）                                       -->
+    <!-- ============================================================ -->
+    <section id="view-detail" class="hidden fade-item">
+      <article class="glass-card p-6 sm:p-9 !transform-none hover:!transform-none">
+        <!-- 返回列表 -->
+        <button id="btn-back-list"
+                class="text-sm text-slate-300 hover:text-cyan-300 inline-flex items-center gap-2 mb-6 transition-colors">
+          <i class="fa-solid fa-arrow-left-long"></i> 返回文章列表
+        </button>
+        <!-- 标题与元信息 -->
+        <h2 id="detail-title" class="text-xl sm:text-2xl font-bold leading-snug" style="color:var(--c-main)"></h2>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-xs text-slate-400">
+          <span><i class="fa-regular fa-calendar mr-1.5"></i><span id="detail-date"></span></span>
+          <span><i class="fa-regular fa-clock mr-1.5"></i>约 <span id="detail-minutes"></span> 分钟</span>
+          <span id="detail-tags" class="flex gap-1.5 flex-wrap"></span>
+        </div>
+        <hr class="border-white/10 my-6" />
+        <!-- 正文 -->
+        <div id="detail-body" class="article-body"></div>
+      </article>
+    </section>
+
+    <!-- 底部版权 -->
+    <footer class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1">
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a></p>
+      <p>Powered by HTML + TailwindCSS + Vanilla JavaScript</p>
+    </footer>
+  </main>
+
+  <!-- Toast / 回到顶部 -->
+  <div id="toast"></div>
+  <button id="btn-top" title="回到顶部"><i class="fa-solid fa-arrow-up"></i></button>
+
+  <script>
+  /* ==================================================================
+   *  文章数据 —— 想新增/修改文章，直接在下面数组里加对象即可
+   *  字段：id 唯一编号 | title 标题 | date 日期 | tags 标签数组
+   *        minutes 预计阅读分钟 | excerpt 摘要 | content 正文行数组
+   *  正文支持简易格式：
+   *    '## 标题'  → 小节标题
+   *    '- 条目'   → 无序列表
+   *    '> 引用'   → 引用块
+   *    '```'      → 包裹代码块（成对出现）
+   *  其余行 → 普通段落
+   * ================================================================== */
+  const ARTICLES = [
+    {
+      id: 1,
+      title: '从 0 到 1 搭一个纯静态个人导航站',
+      date: '2026-09-26', tags: ['前端', '建站'], minutes: 6,
+      excerpt: '记录一下本站是怎么搭起来的：纯静态三件套、毛玻璃卡片的实现，以及为什么不需要后端。',
+      content: [
+        '作为一个喜欢折腾的人，一直想要一个属于自己的导航主页：把自己常用的网站、小工具和随手写的文章都放在一起。这篇博客记录一下这个站是怎么搭起来的。',
+        '## 为什么选择纯静态',
+        '- 无需服务器与数据库，GitHub Pages / Vercel / 云存储都能一键托管；',
+        '- 加载快、成本为零，浏览器打开即所得；',
+        '- 数据全部在前端，隐私压力小，备份就是把文件夹拷走。',
+        '## 技术选型',
+        '页面用 HTML + TailwindCSS + 原生 JavaScript 三件套。Tailwind 的 CDN 模式省去了构建流程，直接在浏览器里生成样式，非常适合这种单页面小项目。',
+        '> 小贴士：CDN 方式只推荐个人小站，正式工程还是应该走构建流程。',
+        '## 毛玻璃是怎么实现的',
+        '核心是 backdrop-filter，让卡片背后的壁纸产生磨砂效果：',
+        '```',
+        '.glass-card {',
+        '  background: rgba(15, 23, 42, 0.42);',
+        '  backdrop-filter: blur(16px) saturate(150%);',
+        '  border-radius: 1.25rem;',
+        '}',
+        '```',
+        '注意 backdrop-filter 在部分老浏览器上需要 -webkit- 前缀；另外父级元素如果存在裁剪，可能让效果失效。',
+        '## 小结',
+        '静态站点最重要的是「把内容放进去」的成本足够低。后续我打算把博客、黄历、书库都做成独立子页面，风格与主页保持一致。'
+      ]
+    },
+    {
+      id: 2,
+      title: 'CSS 毛玻璃卡片实践：backdrop-filter 的坑与技巧',
+      date: '2026-09-14', tags: ['CSS', '前端'], minutes: 5,
+      excerpt: '半透明、磨砂、光晕——毛玻璃好看，但细节不少。整理几个一次就能写对的实践要点。',
+      content: [
+        '毛玻璃（Glassmorphism）这几年一直很流行，深色壁纸加半透明卡片，层次感立刻就出来了。这篇整理几个实用的细节。',
+        '## 基本套路',
+        '半透明背景 + backdrop-filter: blur() + 细边框 + 大圆角 + 柔和阴影，四件套齐活。',
+        '## 那些容易踩的坑',
+        '- backdrop-filter 只对「元素背后」的内容生效，父容器如果有 filter 或 transform，会创建新的层叠上下文导致失效；',
+        '- Safari 需要 -webkit-backdrop-filter；',
+        '- 半透明度别太低：深色壁纸建议 0.35 ~ 0.5，太透会让文字可读性崩掉；',
+        '- 加上 saturate(150%) 会让透出来的颜色更饱满，质感提升明显。',
+        '## hover 动效怎么才不廉价',
+        '关键是「一致」：所有卡片统一用 translateY(-4px) 上浮，配合 300ms 的 ease 缓动和一圈青色描边光晕，克制但灵。',
+        '> 动效宁缺毋滥，页面里超过两三种动效节奏就会显得乱。'
+      ]
+    },
+    {
+      id: 3,
+      title: 'JavaScript 节流与防抖，一次讲透',
+      date: '2026-08-30', tags: ['JavaScript'], minutes: 7,
+      excerpt: '搜索联想用防抖，滚动监听用节流——两个最常用的高频事件「节电开关」，附可直接复制的实现。',
+      content: [
+        '搜索框输入、窗口缩放、按钮连点……高频事件如果不加控制，回调会被疯狂触发。节流和防抖就是两个最常用的「节电开关」。',
+        '## 防抖 debounce',
+        '事件停止触发 n 毫秒后才执行一次。适合「等用户停下来再做」的场景，比如搜索联想：',
+        '```',
+        'function debounce(fn, wait = 300) {',
+        '  let timer = null;',
+        '  return function (...args) {',
+        '    clearTimeout(timer);',
+        '    timer = setTimeout(() => fn.apply(this, args), wait);',
+        '  };',
+        '}',
+        '```',
+        '## 节流 throttle',
+        '无论触发多频繁，每 n 毫秒最多执行一次。适合「匀速响应」的场景，比如滚动监听：',
+        '```',
+        'function throttle(fn, interval = 200) {',
+        '  let last = 0;',
+        '  return function (...args) {',
+        '    const now = Date.now();',
+        '    if (now - last >= interval) {',
+        '      last = now;',
+        '      fn.apply(this, args);',
+        '    }',
+        '  };',
+        '}',
+        '```',
+        '## 怎么选',
+        '- 只关心最终状态 → 防抖（搜索、自动保存）',
+        '- 关心过程反馈 → 节流（滚动加载、拖拽跟手）',
+        '记住一句话：防抖是「等你喊完」，节流是「匀速接客」。'
+      ]
+    },
+    {
+      id: 4,
+      title: '我的 2025 年度复盘：慢一点也没关系',
+      date: '2026-08-18', tags: ['随笔'], minutes: 4,
+      excerpt: '年中给自己做了次复盘：坚持了什么、搞砸了什么、下半年想怎么调整。想到哪写到哪。',
+      content: [
+        '年中给自己做了次复盘，想到哪写到哪。',
+        '## 做得不错的地方',
+        '- 坚持了每周一篇技术笔记，虽然大多潦草，但回看时全是线索；',
+        '- 开始规律运动，状态比去年稳定不少。',
+        '## 不太满意的',
+        '- 收藏夹吃灰严重，「mark 下来等于学会了」的幻觉又犯了；',
+        '- 深度学习的时间被碎片信息切得太碎。',
+        '## 下半年想做的',
+        '把收藏夹清一遍，读不完的就删掉；每周留一个「断网下午」，专门啃硬书。',
+        '> 慢一点也没关系，方向对就行。'
+      ]
+    },
+    {
+      id: 5,
+      title: '写给自己看的 Git 分支策略',
+      date: '2026-07-29', tags: ['Git', '工具'], minutes: 5,
+      excerpt: '团队协作最怕分支乱成一锅粥。记录一份自己用着最舒服的最小流程：三条分支、几条纪律。',
+      content: [
+        '团队协作里最怕的不是代码难写，而是分支乱成一锅粥。记录一份自己用着最舒服的最小流程。',
+        '## 分支怎么分',
+        '- main：永远可部署，只接受合并；',
+        '- feature/*：一个功能一条分支，小步提交；',
+        '- fix/*：线上出问题先切 hotfix，修完立刻合回。',
+        '## 几条纪律',
+        '- 提交信息用「动词开头 + 一句话说清做了什么」，别写 update；',
+        '- 合并前先 rebase 主干，把冲突在自己分支上解决；',
+        '- 合并完就删分支，别留尸体。',
+        '> 分支策略没有标准答案，能减少沟通成本的就是好策略。'
+      ]
+    },
+    {
+      id: 6,
+      title: 'Linux 日常够用的 20 条命令',
+      date: '2026-07-06', tags: ['Linux', '工具'], minutes: 8,
+      excerpt: '不追求大而全，只列日常运维和开发里真正高频的命令：找文件、盯日志、查端口。',
+      content: [
+        '不追求大而全，只列日常运维和开发里真正高频的命令。',
+        '## 文件与目录',
+        '- ls -lah：人类可读大小 + 隐藏文件；',
+        '- du -sh *：看当前目录谁最占空间；',
+        '- find . -name "*.log" -mtime +7：找出七天前的日志。',
+        '## 文本三剑客',
+        '- grep -rn "TODO" .：全项目找待办；',
+        '- tail -f app.log：实时盯日志；',
+        "- awk '{print $1}'：随手提列。",
+        '## 进程与网络',
+        '- ps aux | grep node、kill -9 PID；',
+        '- ss -tlnp：看端口被谁占了；',
+        '- curl -I：看响应头排查缓存。',
+        '其余的用到再查，别背手册。'
+      ]
+    },
+    {
+      id: 7,
+      title: '第一次部署静态网站到公网，我踩了这些坑',
+      date: '2026-06-21', tags: ['建站', '随笔'], minutes: 6,
+      excerpt: '路径大小写、CDN 缓存、HTTPS 混用——部署不是终点，上线之后才浮现的功课都记在这。',
+      content: [
+        '把导航站挂上公网的过程，比想象中顺利，但小坑不少。',
+        '## 坑一：路径大小写',
+        '本地 Windows 不分大小写，Linux 服务器分。图片引用 big.PNG、文件叫 big.png，本地好好的，线上 404。统一小写，一劳永逸。',
+        '## 坑二：缓存不更新',
+        '改完样式刷新没变化，其实是 CDN 缓存。给静态资源加版本号，或者部署后强刷（Ctrl+F5）。',
+        '## 坑三：HTTPS 混用',
+        '页面是 https，里头引用了 http 的接口，浏览器直接拦。全部资源走 https。',
+        '## 一点感受',
+        '部署不是终点：访问统计、404 页面、移动端真机测试，都是上线之后才浮现的功课。'
+      ]
+    },
+    {
+      id: 8,
+      title: '读书笔记：《代码整洁之道》最触动我的 10 句话',
+      date: '2026-05-30', tags: ['读书', '笔记'], minutes: 6,
+      excerpt: '整洁不是审美洁癖，而是团队协作的礼貌。重读经典，摘录并附上一点自己的理解。',
+      content: [
+        '重读《代码整洁之道》，摘几句最触动我的话，附一点自己的理解。',
+        '- 「整洁的代码只做好一件事。」—— 与其写万能函数，不如写多个小函数；',
+        '- 「名字是需求的浓缩。」—— 起名花的时间永远不亏；',
+        '- 「函数的第一规则是短小，第二规则是更短小。」',
+        '- 「注释不是用来补救烂代码的。」—— 大多数注释，其实是把代码重写一遍的请求；',
+        '- 「错误处理很重要，但它不该把逻辑埋起来。」',
+        '- 「测试代码和生产代码一样重要。」—— 没有测试的重构是走钢丝不系绳；',
+        '- 「让营地比你来时更干净。」—— 童子军军规，每次提交顺手改进一点。',
+        '整本书翻下来就一个感受：整洁不是审美洁癖，而是团队协作的礼貌。'
+      ]
+    }
+  ];
+
+  /* ================================================================== */
+  /*  工具函数                                                           */
+  /* ================================================================== */
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  /* ================================================================== */
+  /*  模块一：壁纸加载（与主页相同的异步生成图轮询逻辑）                   */
+  /* ================================================================== */
+  const BG_URL = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+      encodeURIComponent('动漫风格风景壁纸，璀璨星空下的平静湖面，远山与极光，唯美治愈，深蓝青色调，高清4K') +
+      '&image_size=landscape_16_9';
+
+  const PLACEHOLDER_SIZE = 1832;  // 占位图固定宽高
+  const IMG_MAX_RETRY    = 8;     // 最多重试次数
+  const IMG_RETRY_GAP    = 6000;  // 重试间隔(ms)
+
+  function loadBackground() {
+    let tries = 0;
+    const img = document.getElementById('bg-img');
+    function attempt() {
+      const probe = new Image();
+      probe.src = BG_URL + '&_t=' + Date.now();
+      probe.onload = () => {
+        const isPlaceholder = probe.naturalWidth === PLACEHOLDER_SIZE
+                           && probe.naturalHeight === PLACEHOLDER_SIZE;
+        if (isPlaceholder && tries < IMG_MAX_RETRY) {
+          tries++;
+          setTimeout(attempt, IMG_RETRY_GAP);
+        } else {
+          img.src = probe.src;
+          img.style.display = '';
+          document.getElementById('bg-overlay').classList.remove('loading');
+        }
+      };
+      probe.onerror = () => {
+        if (tries < IMG_MAX_RETRY) { tries++; setTimeout(attempt, IMG_RETRY_GAP); }
+      };
+    }
+    attempt();
+  }
+
+  /* ================================================================== */
+  /*  模块二：暗色 / 亮色阅读模式切换（记忆到 localStorage）              */
+  /* ================================================================== */
+  const LS_THEME = 'zhishihunzi_blog_theme';
+
+  function applyTheme(light) {
+    document.body.classList.toggle('light', light);
+    document.getElementById('icon-theme').className = light ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(LS_THEME) === 'light';
+    applyTheme(saved);
+    document.getElementById('btn-theme').addEventListener('click', () => {
+      const light = !document.body.classList.contains('light');
+      applyTheme(light);
+      localStorage.setItem(LS_THEME, light ? 'light' : 'dark');
+    });
+  }
+
+  /* ================================================================== */
+  /*  模块三：正文渲染器（支持 ## 标题 / - 列表 / > 引用 / ``` 代码块）   */
+  /* ================================================================== */
+  function escapeHTML(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function renderContent(lines) {
+    let html = '';
+    let inCode = false;
+    let inList = false;
+
+    const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
+
+    for (const raw of lines) {
+      const line = raw.trim();
+
+      // 代码块围栏开关
+      if (line.startsWith('```')) {
+        if (inCode) { html += '</code></pre>'; inCode = false; }
+        else { closeList(); html += '<pre><code>'; inCode = true; }
+        continue;
+      }
+      if (inCode) { html += escapeHTML(raw) + '\n'; continue; }
+
+      if (line.startsWith('## ')) {            // 小节标题
+        closeList();
+        html += `<h2>${escapeHTML(line.slice(3))}</h2>`;
+      } else if (line.startsWith('- ')) {      // 列表项（连续合并为一个 ul）
+        if (!inList) { html += '<ul>'; inList = true; }
+        html += `<li>${escapeHTML(line.slice(2))}</li>`;
+      } else if (line.startsWith('> ')) {      // 引用块
+        closeList();
+        html += `<blockquote>${escapeHTML(line.slice(2))}</blockquote>`;
+      } else {                                 // 普通段落
+        closeList();
+        html += `<p>${escapeHTML(line)}</p>`;
+      }
+    }
+    if (inCode) html += '</code></pre>';
+    closeList();
+    return html;
+  }
+
+  /* ================================================================== */
+  /*  模块四：列表渲染 + 搜索 + 标签筛选                                 */
+  /* ================================================================== */
+  const state = { keyword: '', tag: '全部' };
+
+  /** 获取全部标签 */
+  function allTags() {
+    const set = new Set();
+    ARTICLES.forEach(a => a.tags.forEach(t => set.add(t)));
+    return ['全部', ...set];
+  }
+
+  /** 当前筛选条件命中的文章 */
+  function filteredArticles() {
+    const kw = state.keyword.trim().toLowerCase();
+    return ARTICLES.filter(a => {
+      const okTag  = state.tag === '全部' || a.tags.includes(state.tag);
+      const okText = !kw
+        || a.title.toLowerCase().includes(kw)
+        || a.excerpt.toLowerCase().includes(kw)
+        || a.tags.some(t => t.toLowerCase().includes(kw));
+      return okTag && okText;
+    });
+  }
+
+  /** 渲染标签筛选条 */
+  function renderTagBar() {
+    const bar = document.getElementById('tag-bar');
+    bar.innerHTML = allTags().map(t =>
+      `<button data-tag="${t}" class="chip ${t === state.tag ? 'active' : ''} text-xs px-3 py-1.5 rounded-full transition-all">${t}</button>`
+    ).join('');
+    bar.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.tag = btn.dataset.tag;
+        renderTagBar();
+        renderList();
+      });
+    });
+  }
+
+  /** 渲染文章列表 */
+  function renderList() {
+    const list = filteredArticles();
+    const box = document.getElementById('article-list');
+    document.getElementById('count-text').textContent =
+      `共 ${ARTICLES.length} 篇文章，当前显示 ${list.length} 篇`;
+    document.getElementById('empty-state').classList.toggle('hidden', list.length > 0);
+
+    box.innerHTML = list.map((a, i) => `
+      <article data-id="${a.id}"
+               class="article-card glass-card p-5 cursor-pointer"
+               style="animation-delay:${i * 0.06}s">
+        <h3 class="font-bold text-[15px] leading-snug t-main group-hover:text-cyan-200">${a.title}</h3>
+        <p class="clamp-2 text-sm mt-2 leading-relaxed" style="color:var(--c-sub)">${a.excerpt}</p>
+        <div class="flex items-center justify-between mt-4 text-xs" style="color:var(--c-sub)">
+          <div class="flex gap-1.5 flex-wrap">
+            ${a.tags.map(t => `<span class="tag-badge px-2 py-0.5 rounded-full">${t}</span>`).join('')}
+          </div>
+          <span class="shrink-0"><i class="fa-regular fa-calendar mr-1"></i>${a.date}</span>
+        </div>
+      </article>
+    `).join('');
+
+    // 点击卡片打开详情
+    box.querySelectorAll('article').forEach(el => {
+      el.addEventListener('click', () => openArticle(Number(el.dataset.id)));
+    });
+  }
+
+  /* ================================================================== */
+  /*  模块五：详情视图切换（记录滚动位置，返回时还原）                    */
+  /* ================================================================== */
+  let lastScrollY = 0;
+
+  function openArticle(id) {
+    const a = ARTICLES.find(x => x.id === id);
+    if (!a) return;
+    lastScrollY = window.scrollY;
+
+    document.getElementById('detail-title').textContent = a.title;
+    document.getElementById('detail-date').textContent = a.date;
+    document.getElementById('detail-minutes').textContent = a.minutes;
+    document.getElementById('detail-tags').innerHTML =
+      a.tags.map(t => `<span class="tag-badge px-2 py-0.5 rounded-full">${t}</span>`).join('');
+    document.getElementById('detail-body').innerHTML = renderContent(a.content);
+
+    document.getElementById('view-list').classList.add('hidden');
+    document.getElementById('view-detail').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  function backToList() {
+    document.getElementById('view-detail').classList.add('hidden');
+    document.getElementById('view-list').classList.remove('hidden');
+    window.scrollTo({ top: lastScrollY, behavior: 'auto' });
+  }
+
+  /* ================================================================== */
+  /*  模块六：搜索 / 回到顶部 / 初始化                                   */
+  /* ================================================================== */
+  function bindEvents() {
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('btn-clear');
+
+    // 输入搜索（用简易防抖，300ms 后触发）
+    let timer = null;
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        state.keyword = input.value;
+        clearBtn.classList.toggle('hidden', !input.value);
+        renderList();
+      }, 300);
+    });
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      state.keyword = '';
+      clearBtn.classList.add('hidden');
+      renderList();
+      input.focus();
+    });
+
+    // 返回列表
+    document.getElementById('btn-back-list').addEventListener('click', backToList);
+
+    // 回到顶部按钮：滚动超过 400px 显示
+    const topBtn = document.getElementById('btn-top');
+    window.addEventListener('scroll', () => {
+      topBtn.classList.toggle('show', window.scrollY > 400);
+    }, { passive: true });
+    topBtn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+
+  function init() {
+    loadBackground();                 // 壁纸
+    initTheme();                      // 阅读模式
+    renderTagBar();                   // 标签筛选
+    renderList();                     // 文章列表
+    bindEvents();                     // 事件绑定
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  }
+
+  init();
+  </script>
+</body>
+</html>

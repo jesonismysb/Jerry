@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端自适应视口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="奈良的求签页 - 诚心摇签，随机抽取一支灵签" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>求签 · 奈良</title>
+
+  <!-- 网页小图标（与主页一致的内联 SVG） -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 方式，无需构建） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    /* Tailwind 自定义配置（与主页一致） */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#67e8f9' }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ==================== 全局基础样式 ==================== */
+    html, body { height: 100%; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ==================== 毛玻璃卡片（与主页同一套参数） ==================== */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+    /* 结果卡片不参与 hover 上浮，保持阅读稳定 */
+    .no-hover, .no-hover:hover { transform: none; }
+    .no-hover:hover { border-color: rgba(148, 197, 255, 0.14); box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35); }
+
+    /* ==================== 入场动画（与主页一致） ==================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    main > * { animation: fadeUp .7s ease both; }
+    main > *:nth-child(1) { animation-delay: .05s; }
+    main > *:nth-child(2) { animation-delay: .12s; }
+
+    /* 结果卡片出现动画 */
+    @keyframes resultIn {
+      from { opacity: 0; transform: translateY(22px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .result-in { animation: resultIn .55s ease both; }
+
+    /* ==================== 签筒与竹签 ==================== */
+    @keyframes cupShake {
+      0%, 100% { transform: rotate(0deg) translateY(0); }
+      10% { transform: rotate(-7deg) translateY(-8px); }
+      25% { transform: rotate(6deg) translateY(-3px); }
+      40% { transform: rotate(-6deg) translateY(-9px); }
+      55% { transform: rotate(7deg) translateY(-2px); }
+      70% { transform: rotate(-5deg) translateY(-7px); }
+      85% { transform: rotate(4deg) translateY(-2px); }
+    }
+    .shaking { animation: cupShake .45s ease-in-out 3; transform-origin: 50% 90%; }
+
+    /* 中选的竹签向上抽出 */
+    .stick-picked { transform: translateY(-34px) rotate(-4deg) !important; }
+
+    /* ==================== 签诗（竖排，从右往左读） ==================== */
+    .poem-vertical {
+      writing-mode: vertical-rl;
+      font-family: "Kaiti SC", "STKaiti", KaiTi, "Noto Serif SC", "SimSun", serif;
+      letter-spacing: .35em;
+      line-height: 2.4;
+    }
+
+    /* ==================== Toast 提示 ==================== */
+    #toast {
+      position: fixed; left: 50%; bottom: 32px;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.92);
+      color: #ecfeff; font-size: 14px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .35);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 99; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    #bg-overlay { transition: opacity .8s ease; }
+    #bg-overlay.loading {
+      background: linear-gradient(180deg, rgba(2,6,23,.97) 0%, rgba(2,6,23,.92) 50%, rgba(2,6,23,.98) 100%) !important;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <!-- ================================================================ -->
+  <!-- 背景层：动漫壁纸 + 遮罩（与主页同一张壁纸地址）                    -->
+  <!-- ================================================================ -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <div id="bg-overlay" class="absolute inset-0 loading"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- 顶部导航栏：返回首页 + 页面标题                                    -->
+  <!-- ================================================================ -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-2xl mx-auto px-4 h-14 flex items-center gap-3">
+      <!-- ① 返回导航主页 -->
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-scroll text-rose-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">奈良 · 求签</h1>
+      </div>
+      <div class="min-w-[86px]"></div>
+    </div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- ============================================================ -->
+    <!-- 卡片一：签筒摇签区                                             -->
+    <!-- ============================================================ -->
+    <section id="stage-card" class="glass-card p-8 sm:p-10 text-center">
+      <!-- 签筒（CSS 绘制：竹签 + 筒身） -->
+      <div id="cup" class="relative mx-auto w-24 h-40 select-none">
+        <!-- 竹签 -->
+        <div id="sticks" class="absolute top-0 left-1/2 -translate-x-1/2 flex items-end gap-[7px]">
+          <span class="stick w-1.5 h-16 rounded-full bg-gradient-to-b from-amber-100 to-amber-300 shadow-sm" style="transition: transform .5s ease .2s;"></span>
+          <span class="stick w-1.5 h-[4.5rem] rounded-full bg-gradient-to-b from-amber-100 to-amber-300 shadow-sm" style="transition: transform .5s ease .2s;"></span>
+          <span class="stick w-1.5 h-[4.2rem] rounded-full bg-gradient-to-b from-amber-100 to-amber-300 shadow-sm" style="transition: transform .5s ease .2s;"></span>
+          <span id="stick-main" class="stick w-1.5 h-[4.8rem] rounded-full bg-gradient-to-b from-amber-50 to-amber-300 shadow-md" style="transition: transform .5s ease .2s;"></span>
+          <span class="stick w-1.5 h-[4.3rem] rounded-full bg-gradient-to-b from-amber-100 to-amber-300 shadow-sm" style="transition: transform .5s ease .2s;"></span>
+          <span class="stick w-1.5 h-16 rounded-full bg-gradient-to-b from-amber-100 to-amber-300 shadow-sm" style="transition: transform .5s ease .2s;"></span>
+          <span class="stick w-1.5 h-[3.8rem] rounded-full bg-gradient-to-b from-amber-100 to-amber-300 shadow-sm" style="transition: transform .5s ease .2s;"></span>
+        </div>
+        <!-- 筒身 -->
+        <div class="absolute top-14 inset-x-0 h-28 rounded-t-lg rounded-b-[2.6rem]
+                    bg-gradient-to-b from-amber-700/80 via-amber-800/70 to-amber-900/80
+                    border border-amber-300/30 shadow-inner overflow-hidden">
+          <!-- 筒箍装饰 -->
+          <div class="absolute top-3 inset-x-0 h-1.5 bg-amber-300/25"></div>
+          <div class="absolute bottom-6 inset-x-0 h-1.5 bg-amber-300/20"></div>
+          <div class="absolute inset-0 flex items-center justify-center">
+            <span class="w-10 h-10 rounded-full bg-amber-950/50 border border-amber-300/40
+                         flex items-center justify-center text-amber-200 font-bold text-lg
+                         font-serif">签</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 引导文案 -->
+      <p id="stage-tip" class="text-sm text-slate-400 mt-6">
+        心中默念所求之事，点击下方按钮诚心摇签
+      </p>
+
+      <!-- 摇签按钮 -->
+      <button id="btn-shake"
+              class="mt-5 px-8 py-2.5 rounded-full text-sm font-medium text-cyan-50
+                     bg-gradient-to-r from-cyan-500/80 to-sky-600/80
+                     border border-cyan-300/40 shadow-lg shadow-cyan-500/25
+                     hover:shadow-cyan-400/40 hover:brightness-110
+                     active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+        <i class="fa-solid fa-hands-praying mr-1.5"></i>诚心摇签
+      </button>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 卡片二：签文结果（初始隐藏）                                   -->
+    <!-- ============================================================ -->
+    <section id="result-card" class="glass-card no-hover p-6 sm:p-8 hidden">
+      <!-- 签号 + 典故 + 吉凶 -->
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <span id="qian-no" class="px-3 py-1 rounded-full bg-cyan-400/10 border border-cyan-300/30
+                                   text-cyan-200 text-sm font-medium">第 - 签</span>
+        <span id="qian-title" class="px-3 py-1 rounded-full bg-white/5 border border-white/10
+                                      text-slate-300 text-sm">-</span>
+        <span id="qian-level" class="px-3 py-1 rounded-full text-sm font-semibold">-</span>
+      </div>
+
+      <!-- 签诗：竖排四句，从右往左读 -->
+      <div class="mt-7 flex justify-center">
+        <div id="qian-poem" class="poem-vertical h-64 sm:h-72 flex justify-center text-slate-100 text-lg"></div>
+      </div>
+
+      <hr class="border-white/10 my-6" />
+
+      <!-- 解签 -->
+      <div class="space-y-4">
+        <div>
+          <p class="text-sm font-semibold text-cyan-300 mb-1.5">
+            <i class="fa-solid fa-lightbulb mr-1.5"></i>解签
+          </p>
+          <p id="qian-meaning" class="text-[15px] leading-loose text-slate-300">-</p>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="rounded-xl border border-emerald-400/25 bg-emerald-400/5 px-4 py-3">
+            <p class="text-xs text-emerald-300 mb-1"><i class="fa-solid fa-check mr-1"></i>宜</p>
+            <p id="qian-yi" class="text-sm text-emerald-100/90">-</p>
+          </div>
+          <div class="rounded-xl border border-rose-400/25 bg-rose-400/5 px-4 py-3">
+            <p class="text-xs text-rose-300 mb-1"><i class="fa-solid fa-xmark mr-1"></i>忌</p>
+            <p id="qian-ji" class="text-sm text-rose-100/90">-</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 重置再抽一次 -->
+      <div class="text-center mt-7">
+        <button id="btn-reset"
+                class="px-8 py-2.5 rounded-full text-sm text-slate-200
+                       bg-white/5 border border-white/10
+                       hover:bg-cyan-400/20 hover:text-cyan-300 hover:border-cyan-300/40
+                       active:scale-95 transition-all">
+          <i class="fa-solid fa-rotate mr-1.5"></i>再抽一次
+        </button>
+        <p class="text-xs text-slate-500 mt-4">签文仅供娱乐参考，好运藏在行动里</p>
+      </div>
+    </section>
+
+    <!-- 底部版权 -->
+    <footer class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1">
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a></p>
+      <p>Powered by HTML + TailwindCSS + Vanilla JavaScript</p>
+    </footer>
+  </main>
+
+  <!-- Toast 提示容器 -->
+  <div id="toast"></div>
+
+  <script>
+  /* ==================================================================
+   *  签库 —— 24 支灵签，直接在数组中增删即可
+   *  字段：no 签号 | level 吉凶 | title 典故
+   *        poem 签诗四句 | meaning 解签释义 | yi 宜 | ji 忌
+   *  吉凶可选：上上 / 上 / 中 / 中平 / 下 / 下下
+   * ================================================================== */
+  const QIAN_DB = [
+    { no: 1,  level: '上上', title: '锺离成道',
+      poem: ['开天辟地作良缘', '吉日良时万物全', '若得此签非小可', '人行忠正帝王宣'],
+      meaning: '诸事俱备，正逢良机。心存忠正、行事光明，自有贵人扶持，名利皆可期。',
+      yi: '求职、开业、婚嫁', ji: '急功近利' },
+    { no: 2,  level: '上', title: '鲲鹏展翅',
+      poem: ['鲲鹏展翅上云霄', '一举冲天志气高', '莫道前程风浪急', '长风送我渡银涛'],
+      meaning: '久困得舒，运势正升。昔日所积之功，此时渐见成效，放手一搏必有回响。',
+      yi: '出行、考试、谈判', ji: '半途而废' },
+    { no: 3,  level: '中', title: '行路吟',
+      poem: ['欲渡黄河冰塞川', '将登太行雪满山', '闲来垂钓碧溪上', '忽复乘舟梦日边'],
+      meaning: '前路偶有阻碍，非人力可强求。不如沉潜蓄力，静待时机，转机自会到来。',
+      yi: '休整、学习、蓄力', ji: '强求、冒进' },
+    { no: 4,  level: '上', title: '太公垂钓',
+      poem: ['直钩垂钓渭水滨', '不惧寒霜不怨贫', '愿者上钩终有日', '文王车驾出红尘'],
+      meaning: '怀才不必急售。守正待时，伯乐终至，晚成的机会往往更大更稳。',
+      yi: '守成、修身、结缘', ji: '自弃、张望' },
+    { no: 5,  level: '下', title: '雨中行',
+      poem: ['风雨潇潇路正长', '泥深滑滑马蹄伤', '早知此地难行过', '何不当初备行囊'],
+      meaning: '准备不足，行路维艰。此刻宜退步复盘、补齐短板，而非硬闯。',
+      yi: '复盘、求助、止损', ji: '硬闯、借贷' },
+    { no: 6,  level: '上上', title: '鲤鱼化龙',
+      poem: ['一跃龙门气象新', '风云际会正逢春', '从前辛苦皆铺垫', '从此扬眉不厌贫'],
+      meaning: '苦尽甘来之象。长久积累终于兑现，名望地位有跃升之机。',
+      yi: '晋升、签约、迁居', ji: '骄纵、铺张' },
+    { no: 7,  level: '中', title: '守园',
+      poem: ['守得园田岁月宽', '花开花落自家看', '是非莫与旁人论', '一盏清茶心自安'],
+      meaning: '平稳有余，突破不足。守分安常反得安稳，妄动反生是非。',
+      yi: '守静、养身、陪伴家人', ji: '争讼、远行' },
+    { no: 8,  level: '中', title: '磨镜',
+      poem: ['古镜蒙尘岁月深', '朝朝拂拭莫辞辛', '一朝磨得光明现', '照见山河照见心'],
+      meaning: '成果未显，功夫未足。持续打磨自己，光明终有一日自现。',
+      yi: '进修、练功、储蓄', ji: '急躁、比较' },
+    { no: 9,  level: '上', title: '春信',
+      poem: ['枯木逢春枝自荣', '一宵细雨百芽生', '莫嫌门外无人问', '花放自然蜂蝶迎'],
+      meaning: '低谷将过，转机初萌。把手头事做好，认可与机会会自己找上门。',
+      yi: '发布、展示、社交', ji: '自疑、闭门' },
+    { no: 10, level: '下', title: '逆水舟',
+      poem: ['逆水行舟力已殚', '狂风偏又打船帆', '停桡且向湾中泊', '待得风平再挂帆'],
+      meaning: '强撑有害，进退两难。主动暂停不是失败，是止损，是蓄力。',
+      yi: '暂停、休养、观望', ji: '硬拼、加注' },
+    { no: 11, level: '上', title: '开渠',
+      poem: ['引得清泉入野田', '一分耕耘一分甜', '莫笑当前收益小', '细流日久汇成川'],
+      meaning: '踏实经营，积少成多。眼前虽是小利，坚持复利终成大器。',
+      yi: '理财、耕种、积累', ji: '投机、豪赌' },
+    { no: 12, level: '中平', title: '渡口',
+      poem: ['渡口舟横人未齐', '潮来潮去日沉西', '此行不必争先渡', '静看他人自有机'],
+      meaning: '时机未到，同行者未齐。耐心等候，比抢跑更接近目标。',
+      yi: '等候、协调、观察', ji: '抢先、催促' },
+    { no: 13, level: '上上', title: '金榜',
+      poem: ['十年灯下墨痕干', '一日金榜姓氏刊', '莫道书生无用处', '笔端自有万重山'],
+      meaning: '学业功名有成之象。过往努力即将被看见，放手去考去争。',
+      yi: '考试、面试、投稿', ji: '懈怠、自满' },
+    { no: 14, level: '中', title: '缝衣',
+      poem: ['新衣初裁针线忙', '长短高低细较量', '剪得从容方合体', '急来反使错千行'],
+      meaning: '事情需要慢工细活。多一分耐心与检查，少一分返工与遗憾。',
+      yi: '细作、复核、谈判', ji: '赶工、粗心' },
+    { no: 15, level: '下', title: '雾锁',
+      poem: ['大雾茫茫锁远山', '眼前咫尺亦为难', '不如且住茅亭下', '待到云开再启程'],
+      meaning: '信息不明，局势混沌。看不清就先不动，贸然决策易入歧途。',
+      yi: '观望、求教、收集信息', ji: '拍板、签约' },
+    { no: 16, level: '上', title: '雁阵',
+      poem: ['秋雁南飞字字连', '一声同气一声援', '独行快似无人问', '众行方知天地宽'],
+      meaning: '贵人相助之象。主动寻求协作，抱团而行路更宽。',
+      yi: '合作、组队、求助', ji: '独断、单干' },
+    { no: 17, level: '中', title: '潮信',
+      poem: ['潮涨潮落自有期', '莫为退潮叹水低', '且把船缆系牢靠', '坐看八月大潮时'],
+      meaning: '运势有周期。当下回撤属正常，守住底线，等属于自己的大潮。',
+      yi: '守仓、守约、锻炼', ji: '割肉、翻脸' },
+    { no: 18, level: '下', title: '孤灯',
+      poem: ['孤灯夜雨客他乡', '欲寄家书雁断行', '百事萦怀无一就', '早知归去胜奔忙'],
+      meaning: '身心俱疲，奔波无果。是时候回家、休息、照顾自己了。',
+      yi: '归家、休息、体检', ji: '远行、熬夜' },
+    { no: 19, level: '上上', title: '久旱逢霖',
+      poem: ['久旱田禾一雨苏', '枯苗一夜绿平芜', '人间最喜甘霖至', '天意从来不负渠'],
+      meaning: '期盼之事将有着落。久拖未决的难题会出现转机。',
+      yi: '推进、复联、重启', ji: '怀疑、拖延' },
+    { no: 20, level: '中', title: '摘果',
+      poem: ['满树花开未见实', '青桃涩李莫先尝', '守到秋深霜降后', '甜香自会满庭堂'],
+      meaning: '火候未到，早摘必涩。给时间一点时间，成果自熟。',
+      yi: '等待、培育、迭代', ji: '催熟、提前官宣' },
+    { no: 21, level: '上', title: '移舟',
+      poem: ['移舟就岸月明中', '一路平安一路风', '旧地重游皆故事', '新程更比旧程通'],
+      meaning: '变更带来生机。换环境、换思路、换赛道，皆有新气象。',
+      yi: '跳槽、搬家、改版', ji: '恋旧、拖延' },
+    { no: 22, level: '下', title: '镜花',
+      poem: ['镜里繁花分外妍', '伸手方知隔一层', '眼前收益终是幻', '莫把浮云当食盐'],
+      meaning: '警惕诱惑与骗局。看似唾手可得的利益，多半有陷阱。',
+      yi: '谨慎、核实、守财', ji: '投资、轻信' },
+    { no: 23, level: '中平', title: '观棋',
+      poem: ['旁观一局子声凉', '黑白纷纷费忖量', '胜负到头浑是梦', '不如归去煮茶香'],
+      meaning: '纷争与我无关时，不必卷入。保持距离，护住心力。',
+      yi: '旁观、中立、静养', ji: '站队、多言' },
+    { no: 24, level: '下下', title: '崩堤',
+      poem: ['千里长堤蚁穴空', '涓涓不塞酿成洪', '早知今日修之固', '悔不当初听老农'],
+      meaning: '小问题正在变大。立刻正视、立刻修补，勿再拖延侥幸。',
+      yi: '止损、修复、坦白', ji: '侥幸、隐瞒' }
+  ];
+
+  /* 吉凶等级 → 徽章配色 */
+  const LEVEL_STYLE = {
+    '上上': 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/40',
+    '上':   'bg-cyan-400/10    text-cyan-300    border border-cyan-400/40',
+    '中':   'bg-amber-400/10   text-amber-300   border border-amber-400/40',
+    '中平': 'bg-sky-400/10     text-sky-300     border border-sky-400/40',
+    '下':   'bg-orange-400/10  text-orange-300  border border-orange-400/40',
+    '下下': 'bg-rose-400/10    text-rose-300    border border-rose-400/40'
+  };
+
+  /* ================================================================== */
+  /*  工具函数                                                           */
+  /* ================================================================== */
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  /* ================================================================== */
+  /*  摇签核心流程                                                       */
+  /* ================================================================== */
+  let lastIdx = -1;      // 上一次抽到的签（避免连续重复）
+  let isShaking = false; // 防抖：摇签过程中禁止重复点击
+
+  /**
+   * 随机抽一支签（尽量不与上一次重复）
+   * @returns {number} 签在 QIAN_DB 中的下标
+   */
+  function pickQian() {
+    let idx;
+    do { idx = Math.floor(Math.random() * QIAN_DB.length); }
+    while (QIAN_DB.length > 1 && idx === lastIdx);
+    return idx;
+  }
+
+  /** 渲染签文结果卡片 */
+  function renderResult(qian) {
+    document.getElementById('qian-no').textContent = `第 ${qian.no} 签`;
+    document.getElementById('qian-title').textContent = `「${qian.title}」`;
+
+    const levelEl = document.getElementById('qian-level');
+    levelEl.textContent = qian.level;
+    levelEl.className = 'px-3 py-1 rounded-full text-sm font-semibold ' + (LEVEL_STYLE[qian.level] || LEVEL_STYLE['中']);
+
+    document.getElementById('qian-poem').innerHTML =
+      qian.poem.map(l => `<p>${l}</p>`).join('');
+    document.getElementById('qian-meaning').textContent = qian.meaning;
+    document.getElementById('qian-yi').textContent = qian.yi;
+    document.getElementById('qian-ji').textContent = qian.ji;
+
+    // 展示结果卡片（带入场动画）并滚动到可见位置
+    const card = document.getElementById('result-card');
+    card.classList.remove('hidden', 'result-in');
+    void card.offsetWidth;              // 触发重排以重启动画
+    card.classList.add('result-in');
+    setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+  }
+
+  /** 重置回摇签状态 */
+  function resetStage() {
+    document.getElementById('result-card').classList.add('hidden');
+    document.getElementById('stick-main').classList.remove('stick-picked');
+    document.getElementById('stage-tip').textContent = '心中默念所求之事，点击下方按钮诚心摇签';
+    document.getElementById('btn-shake').disabled = false;
+    document.getElementById('stage-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  /** 摇签：播放抖动动画 → 抽签 → 展示结果 */
+  function shake() {
+    if (isShaking) return;
+    isShaking = true;
+
+    const cup = document.getElementById('cup');
+    const btn = document.getElementById('btn-shake');
+    const tip = document.getElementById('stage-tip');
+
+    btn.disabled = true;
+    tip.textContent = '签筒摇动中…心诚则灵';
+    cup.classList.add('shaking');
+
+    // 动画总时长 .45s × 3 = 1.35s，结束后抽签展示
+    setTimeout(() => {
+      cup.classList.remove('shaking');
+
+      const idx = pickQian();
+      lastIdx = idx;
+      document.getElementById('stick-main').classList.add('stick-picked'); // 中选竹签抽出
+      tip.textContent = '签已抽出，请看签文';
+
+      setTimeout(() => {
+        renderResult(QIAN_DB[idx]);
+        isShaking = false;
+        // 结果页再抽由「再抽一次」按钮触发 resetStage
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-rotate mr-1.5"></i>重新摇签';
+      }, 450);
+    }, 1350);
+  }
+
+  /* ================================================================== */
+  /*  壁纸加载（与主页相同的异步生成图轮询逻辑）                          */
+  /* ================================================================== */
+  const BG_URL = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+      encodeURIComponent('动漫风格风景壁纸，璀璨星空下的平静湖面，远山与极光，唯美治愈，深蓝青色调，高清4K') +
+      '&image_size=landscape_16_9';
+
+  const PLACEHOLDER_SIZE = 1832, IMG_MAX_RETRY = 8, IMG_RETRY_GAP = 6000;
+
+  function loadBackground() {
+    let tries = 0;
+    const img = document.getElementById('bg-img');
+    function attempt() {
+      const probe = new Image();
+      probe.src = BG_URL + '&_t=' + Date.now();
+      probe.onload = () => {
+        const isPlaceholder = probe.naturalWidth === PLACEHOLDER_SIZE
+                           && probe.naturalHeight === PLACEHOLDER_SIZE;
+        if (isPlaceholder && tries < IMG_MAX_RETRY) { tries++; setTimeout(attempt, IMG_RETRY_GAP); }
+        else {
+          img.src = probe.src; img.style.display = '';
+          document.getElementById('bg-overlay').classList.remove('loading');
+        }
+      };
+      probe.onerror = () => { if (tries < IMG_MAX_RETRY) { tries++; setTimeout(attempt, IMG_RETRY_GAP); } };
+    }
+    attempt();
+  }
+
+  /* ================================================================== */
+  /*  初始化                                                             */
+  /* ================================================================== */
+  function init() {
+    loadBackground();
+
+    document.getElementById('btn-shake').addEventListener('click', shake);
+    document.getElementById('btn-reset').addEventListener('click', resetStage);
+
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  }
+
+  init();
+  </script>
+</body>
+</html>

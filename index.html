@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端自适应视口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="奈良的个人导航主页 - 博客 / GitHub / 黄历 / 求签 / 工具库 / IT书库" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>奈良 · 个人导航</title>
+
+  <!-- 网页小图标（内联 SVG，无需额外文件） -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 方式，无需构建，可直接部署） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    /* Tailwind 自定义配置 */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            accent: '#67e8f9' // 柔和青蓝色点缀
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ==================== 全局基础样式 ==================== */
+    html, body { height: 100%; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220; /* 壁纸加载前的深色兜底 */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ==================== 毛玻璃卡片 ==================== */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    }
+    /* hover：卡片上浮 + 青蓝色描边光晕 */
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+
+    /* ==================== 入场动画（依次淡入上浮） ==================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    main > * { animation: fadeUp .7s ease both; }
+    main > *:nth-child(1) { animation-delay: .05s; }
+    main > *:nth-child(2) { animation-delay: .12s; }
+    main > *:nth-child(3) { animation-delay: .19s; }
+    main > *:nth-child(4) { animation-delay: .26s; }
+    main > *:nth-child(5) { animation-delay: .33s; }
+    main > *:nth-child(6) { animation-delay: .40s; }
+    main > *:nth-child(7) { animation-delay: .47s; }
+
+    /* ==================== 诗词切换淡入 ==================== */
+    @keyframes poemFade {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .poem-fade { animation: poemFade .5s ease both; }
+
+    /* ==================== Toast 提示 ==================== */
+    #toast {
+      position: fixed; left: 50%; bottom: 32px;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.92);
+      color: #ecfeff; font-size: 14px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8,145,178,.35);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 99; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 定位文字呼吸效果 */
+    .pulse-dot {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: #67e8f9; margin-right: 6px;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:.4;} 50%{opacity:1;} }
+
+    /* 壁纸尚未生成完成（占位图）时加深遮罩，避免占位文字透出影响观感 */
+    #bg-overlay { transition: opacity .8s ease; }
+    #bg-overlay.loading {
+      background: linear-gradient(180deg, rgba(2,6,23,.97) 0%, rgba(2,6,23,.92) 50%, rgba(2,6,23,.98) 100%) !important;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <!-- ================================================================ -->
+  <!-- 背景层：动漫风格壁纸 + 深色渐变遮罩（壁纸地址在下方 SITE_CONFIG 配置） -->
+  <!-- ================================================================ -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <!-- loading 类：壁纸未就绪时遮罩加深；图片加载完成后由 JS 移除 -->
+    <div id="bg-overlay" class="absolute inset-0 loading"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <!-- 主容器：移动端居中窄栏，电脑端最大宽度 -->
+  <main class="max-w-2xl mx-auto px-4 py-8 sm:py-12 space-y-5">
+
+    <!-- ============================================================ -->
+    <!-- 顶部：圆形头像 + 网站名称                                       -->
+    <!-- ============================================================ -->
+    <header class="flex flex-col items-center text-center gap-3 pt-2">
+      <div class="relative w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden
+                  ring-2 ring-cyan-300/40 shadow-lg shadow-cyan-500/20
+                  bg-gradient-to-br from-cyan-500/40 to-blue-600/40">
+        <!-- 头像图片（地址在 SITE_CONFIG.avatar 配置；加载完成前/失败时显示「奈」字兜底） -->
+        <img id="avatar-img" src="" alt="头像"
+             class="w-full h-full object-cover opacity-0 transition-opacity duration-700" />
+        <span id="avatar-fb"
+              class="absolute inset-0 flex items-center justify-center text-3xl sm:text-4xl font-bold text-cyan-200">奈</span>
+      </div>
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-wide text-white">
+          <span class="bg-gradient-to-r from-cyan-300 to-sky-400 bg-clip-text text-transparent">奈良</span>
+        </h1>
+        <p id="site-slogan" class="text-xs sm:text-sm text-slate-400 mt-1">一个混子的知识导航站</p>
+      </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <!-- 卡片一：欢迎访客模块（IP 属地 + 分享 + 邮箱）                   -->
+    <!-- ============================================================ -->
+    <section class="glass-card p-5 sm:p-6">
+      <div class="flex items-center gap-4">
+        <!-- 左侧图标 -->
+        <div class="shrink-0 w-11 h-11 rounded-xl bg-cyan-400/10 text-cyan-300 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-hand-sparkles"></i>
+        </div>
+        <!-- 中间欢迎语 -->
+        <div class="flex-1 min-w-0">
+          <p class="text-base sm:text-lg leading-relaxed text-slate-100">
+            欢迎来自
+            <span id="welcome-region" class="text-cyan-300 font-semibold">
+              <span class="pulse-dot"></span>定位中…
+            </span>
+            的用户访问本站
+          </p>
+          <p class="text-xs text-slate-400 mt-1">愿你在这里有所收获 ✨</p>
+        </div>
+        <!-- 右侧操作按钮：分享 / 邮箱 -->
+        <div class="shrink-0 flex gap-2">
+          <button id="btn-share" title="分享本站"
+                  class="w-10 h-10 rounded-full bg-white/5 hover:bg-cyan-400/20 hover:text-cyan-300
+                         border border-white/10 flex items-center justify-center transition">
+            <i class="fa-solid fa-share-nodes"></i>
+          </button>
+          <a id="btn-email" title="发送邮件"
+             class="w-10 h-10 rounded-full bg-white/5 hover:bg-cyan-400/20 hover:text-cyan-300
+                    border border-white/10 flex items-center justify-center transition">
+            <i class="fa-solid fa-envelope"></i>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 卡片二：实时时间日期模块（年月日 / 星期 / 时分秒 / 访客城市）    -->
+    <!-- ============================================================ -->
+    <section class="glass-card p-6 text-center">
+      <p id="clock-date" class="text-sm sm:text-base text-slate-300">----年--月--日 星期-</p>
+      <p id="clock-time"
+         class="my-2 font-mono tabular-nums text-4xl sm:text-5xl font-bold tracking-widest
+                bg-gradient-to-r from-cyan-300 to-sky-400 bg-clip-text text-transparent">
+        --:--:--
+      </p>
+      <p class="text-xs sm:text-sm text-slate-400">
+        <i class="fa-solid fa-location-dot text-cyan-400/80 mr-1"></i>
+        当前所在城市：<span id="clock-city" class="text-cyan-200/90">定位中…</span>
+      </p>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 卡片三：每日随机诗词（本地诗词库随机抽取）                      -->
+    <!-- ============================================================ -->
+    <section class="glass-card p-6 relative overflow-hidden">
+      <!-- 装饰性大引号 -->
+      <i class="fa-solid fa-quote-left absolute -top-2 left-3 text-6xl text-cyan-300/10 pointer-events-none"></i>
+
+      <div class="relative text-center px-2">
+        <p id="poem-content" class="poem-fade text-lg sm:text-xl leading-loose text-slate-100 font-medium">
+          正在抽取今日诗词…
+        </p>
+        <p id="poem-author" class="poem-fade mt-3 text-sm text-slate-400 text-right">
+          —— 加载中
+        </p>
+      </div>
+
+      <div class="relative text-center mt-4">
+        <button id="btn-poem"
+                class="text-xs sm:text-sm px-4 py-1.5 rounded-full bg-white/5 hover:bg-cyan-400/20
+                       hover:text-cyan-300 border border-white/10 transition">
+          <i class="fa-solid fa-rotate mr-1"></i>换一句
+        </button>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 网站列表区域：网格功能按钮（由 SITE_CONFIG.links 自动渲染）      -->
+    <!-- ============================================================ -->
+    <section>
+      <h2 class="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2 px-1">
+        <span class="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-300 to-sky-500"></span>
+        常用导航
+      </h2>
+      <div id="nav-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <!-- 导航卡片由 JS 动态生成 -->
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 卡片四：网站统计（本地存储实现 PV / UV 简单计数）               -->
+    <!-- ============================================================ -->
+    <section class="glass-card p-5 sm:p-6 grid grid-cols-2 divide-x divide-white/10">
+      <div class="text-center">
+        <p id="stat-pv" class="text-2xl sm:text-3xl font-bold text-cyan-300 font-mono tabular-nums">0</p>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          <i class="fa-solid fa-eye mr-1"></i>总访问量
+        </p>
+      </div>
+      <div class="text-center">
+        <p id="stat-uv" class="text-2xl sm:text-3xl font-bold text-cyan-300 font-mono tabular-nums">0</p>
+        <p class="text-xs sm:text-sm text-slate-400 mt-1">
+          <i class="fa-solid fa-users mr-1"></i>访客人数
+        </p>
+      </div>
+    </section>
+
+    <!-- 底部版权 -->
+    <footer class="text-center text-xs text-slate-500 pt-2 pb-4 space-y-1">
+      <p>© <span id="footer-year"></span> 奈良 · 纯静态页面，欢迎常来逛逛</p>
+      <p>Powered by HTML + TailwindCSS + Vanilla JavaScript</p>
+    </footer>
+  </main>
+
+  <!-- 全局 Toast 提示容器 -->
+  <div id="toast"></div>
+
+  <script>
+  /* ==================================================================
+   *  站点配置区 —— 需要修改的信息全部集中在这里
+   * ================================================================== */
+  const SITE_CONFIG = {
+    name: '奈良',
+    slogan: '一个混子的知识导航站',
+    email: 'yourname@example.com',   // TODO: 替换为你的邮箱
+
+    // 头像图片地址（可换成你自己的头像 URL 或相对路径，如 ./avatar.jpg）
+    avatar: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+            encodeURIComponent('可爱动漫风格头像，蓝青色短发，简约渐变背景，高清插画') +
+            '&image_size=square_hd',
+
+    // 动漫风格壁纸地址（可自行替换为任意图片 URL 或相对路径）
+    background: 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+                encodeURIComponent('动漫风格风景壁纸，璀璨星空下的平静湖面，远山与极光，唯美治愈，深蓝青色调，高清4K') +
+                '&image_size=landscape_16_9',
+
+    /* 导航按钮：name 名称 / url 跳转链接 / icon 图标(Font Awesome 类名) / color 主题色
+     * 👉 修改 url 即可换成你自己的链接；url 留空或为 '#' 时点击会提示“暂未配置” */
+    links: [
+      { name: '博客',     url: './blog.html',                    icon: 'fa-solid fa-feather',     color: 'cyan'    },
+      { name: 'GitHub',   url: 'https://github.com/',            icon: 'fa-brands fa-github',     color: 'slate'   },
+      { name: '今日黄历', url: './huangli.html',                 icon: 'fa-solid fa-calendar-day', color: 'amber'  },
+      { name: '求签',     url: './qiuqian.html',                 icon: 'fa-solid fa-scroll',      color: 'rose'    },
+      { name: '工具库',   url: '#',                              icon: 'fa-solid fa-toolbox',     color: 'emerald' },
+      { name: 'IT书库',   url: './itbooks.html',                 icon: 'fa-solid fa-book-open',   color: 'violet'  }
+    ]
+  };
+
+  /* 图标配色表（使用完整类名，保证 Tailwind CDN 能正确识别生成） */
+  const COLOR_MAP = {
+    cyan:    'bg-cyan-400/10 text-cyan-300',
+    slate:   'bg-slate-300/10 text-slate-200',
+    amber:   'bg-amber-400/10 text-amber-300',
+    rose:    'bg-rose-400/10 text-rose-300',
+    emerald: 'bg-emerald-400/10 text-emerald-300',
+    violet:  'bg-violet-400/10 text-violet-300'
+  };
+
+  /* ==================================================================
+   *  本地诗词库（每次刷新 / 点击“换一句”随机抽取）
+   *  content 诗句 | dynasty 朝代 | author 作者 | source 出处
+   * ================================================================== */
+  const POETRY_DB = [
+    { content: '长风破浪会有时，直挂云帆济沧海。', dynasty: '唐', author: '李白',   source: '《行路难·其一》' },
+    { content: '天生我材必有用，千金散尽还复来。', dynasty: '唐', author: '李白',   source: '《将进酒》' },
+    { content: '落霞与孤鹜齐飞，秋水共长天一色。', dynasty: '唐', author: '王勃',   source: '《滕王阁序》' },
+    { content: '海内存知己，天涯若比邻。',         dynasty: '唐', author: '王勃',   source: '《送杜少府之任蜀州》' },
+    { content: '会当凌绝顶，一览众山小。',         dynasty: '唐', author: '杜甫',   source: '《望岳》' },
+    { content: '大漠孤烟直，长河落日圆。',         dynasty: '唐', author: '王维',   source: '《使至塞上》' },
+    { content: '行到水穷处，坐看云起时。',         dynasty: '唐', author: '王维',   source: '《终南别业》' },
+    { content: '春风又绿江南岸，明月何时照我还。', dynasty: '宋', author: '王安石', source: '《泊船瓜洲》' },
+    { content: '但愿人长久，千里共婵娟。',         dynasty: '宋', author: '苏轼',   source: '《水调歌头》' },
+    { content: '莫听穿林打叶声，何妨吟啸且徐行。', dynasty: '宋', author: '苏轼',   source: '《定风波》' },
+    { content: '不识庐山真面目，只缘身在此山中。', dynasty: '宋', author: '苏轼',   source: '《题西林壁》' },
+    { content: '山重水复疑无路，柳暗花明又一村。', dynasty: '宋', author: '陆游',   source: '《游山西村》' },
+    { content: '纸上得来终觉浅，绝知此事要躬行。', dynasty: '宋', author: '陆游',   source: '《冬夜读书示子聿》' },
+    { content: '问渠那得清如许？为有源头活水来。', dynasty: '宋', author: '朱熹',   source: '《观书有感》' },
+    { content: '接天莲叶无穷碧，映日荷花别样红。', dynasty: '宋', author: '杨万里', source: '《晓出净慈寺送林子方》' },
+    { content: '落红不是无情物，化作春泥更护花。', dynasty: '清', author: '龚自珍', source: '《己亥杂诗》' },
+    { content: '人生若只如初见，何事秋风悲画扇。', dynasty: '清', author: '纳兰性德', source: '《木兰花·拟古决绝词柬友》' },
+    { content: '采菊东篱下，悠然见南山。',         dynasty: '魏晋', author: '陶渊明', source: '《饮酒·其五》' },
+    { content: '路漫漫其修远兮，吾将上下而求索。', dynasty: '战国', author: '屈原',   source: '《离骚》' },
+    { content: '黑发不知勤学早，白首方悔读书迟。', dynasty: '唐', author: '颜真卿', source: '《劝学》' },
+    { content: '千淘万漉虽辛苦，吹尽狂沙始到金。', dynasty: '唐', author: '刘禹锡', source: '《浪淘沙》' },
+    { content: '不畏浮云遮望眼，自缘身在最高层。', dynasty: '宋', author: '王安石', source: '《登飞来峰》' }
+  ];
+
+  /* ==================================================================
+   *  IP 属地接口列表（按顺序尝试，任一成功即停止；全部失败则显示“未知地区”）
+   *  均为免费、支持 HTTPS 与跨域(CORS)的公开接口
+   * ================================================================== */
+  const IP_APIS = [
+    { // ① 百度千帆免费接口
+      url: 'https://qifu-api.baidubce.com/ip/local/geo/v1/district',
+      parse: (d) => d && d.data ? { prov: d.data.prov, city: d.data.city, ip: d.data.ip } : null
+    },
+    { // ② vore 免费接口
+      url: 'https://api.vore.top/api/IPdata',
+      parse: (d) => d && d.ipinfo ? { prov: d.ipinfo.prov, city: d.ipinfo.city, ip: d.ipinfo.cip } : null
+    },
+    { // ③ UserAgentInfo 接口
+      url: 'https://ip.useragentinfo.com/json',
+      parse: (d) => d ? { prov: d.province, city: d.city, ip: d.ip } : null
+    },
+    { // ④ ipapi.co 兜底（海外，可能为英文地名）
+      url: 'https://ipapi.co/json/',
+      parse: (d) => d && d.country ? { prov: d.region, city: d.city, ip: d.ip } : null
+    }
+  ];
+
+  /* ================================================================== */
+  /*  工具函数                                                           */
+  /* ================================================================== */
+
+  /** Toast 轻提示 */
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  /** 带超时的 fetch JSON 请求 */
+  async function fetchJSON(url, timeout = 6000) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeout);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return await res.json();
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** 数字滚动动画 */
+  function countUp(el, target, duration = 700) {
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min((now - start) / duration, 1);
+      el.textContent = Math.floor(target * (1 - Math.pow(1 - p, 3))); // easeOutCubic
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ================================================================== */
+  /*  图片接口为“异步生成”模式：新提示词首次请求返回固定占位图               */
+  /*  （1832×1832 浅灰图），正式图生成好后再请求才返回。                   */
+  /*  此加载器自动轮询：识别到占位图就等待后重新请求，访客无需手动刷新。     */
+  /* ================================================================== */
+  const PLACEHOLDER_SIZE = 1832;           // 占位图固定宽高
+  const IMG_MAX_RETRY    = 8;              // 最多重试次数
+  const IMG_RETRY_GAP    = 6000;           // 每次重试间隔(ms)
+
+  /**
+   * 加载“异步生成”的图片
+   * @param {HTMLImageElement} imgEl  目标 <img> 元素
+   * @param {string} url              图片接口地址
+   * @param {function} onReady        正式图加载完成回调
+   */
+  function loadGeneratedImage(imgEl, url, onReady) {
+    let tries = 0;
+
+    function applyReady() {
+      imgEl.src = probe.src;          // 走浏览器缓存，瞬间显示，不重复耗流量
+      imgEl.classList.remove('opacity-0');
+      onReady && onReady();
+    }
+
+    function attempt() {
+      const probe = new Image();
+      // 加时间戳绕过中间缓存，确保拿到接口最新结果
+      probe.src = url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now();
+
+      probe.onload = () => {
+        const isPlaceholder = probe.naturalWidth === PLACEHOLDER_SIZE
+                           && probe.naturalHeight === PLACEHOLDER_SIZE;
+        if (isPlaceholder && tries < IMG_MAX_RETRY) {
+          tries++;
+          setTimeout(attempt, IMG_RETRY_GAP); // 图片仍在生成，稍后重试
+        } else {
+          applyReady();               // 正式图就绪；超过重试上限也先展示当前结果
+        }
+      };
+      probe.onerror = () => {
+        if (tries < IMG_MAX_RETRY) {
+          tries++;
+          setTimeout(attempt, IMG_RETRY_GAP); // 网络抖动，稍后重试
+        }
+        // 彻底失败则保持兜底样式（深色背景 / “知”字头像），不打扰访客
+      };
+    }
+
+    attempt();
+  }
+
+  /* ================================================================== */
+  /*  模块一：访客 IP 属地                                                */
+  /* ================================================================== */
+  let visitorLocation = { prov: '', city: '', text: '未知地区' };
+
+  async function initVisitorLocation() {
+    const welcomeEl = document.getElementById('welcome-region');
+    const cityEl = document.getElementById('clock-city');
+
+    for (const api of IP_APIS) {
+      try {
+        const data = await fetchJSON(api.url);
+        const loc = api.parse(data);
+        if (loc && (loc.prov || loc.city)) {
+          // 直辖市等情况省市同名时只显示一次
+          let text = [loc.prov, loc.city].filter(Boolean).join(' ');
+          if (loc.prov && loc.city && (loc.prov.includes(loc.city) || loc.city.includes(loc.prov))) {
+            text = loc.prov;
+          }
+          visitorLocation = { prov: loc.prov || '', city: loc.city || '', text };
+
+          welcomeEl.innerHTML = '<i class="fa-solid fa-location-dot text-cyan-400 mr-1"></i>' + text;
+          cityEl.textContent = loc.city || loc.prov || '未知';
+          return;
+        }
+      } catch (err) {
+        // 当前接口失败，自动尝试下一个
+        console.warn('[IP定位] 接口失败：', api.url, err.message || err);
+      }
+    }
+    // 全部接口失败时的兜底展示
+    welcomeEl.innerHTML = '<i class="fa-solid fa-circle-question text-slate-400 mr-1"></i>未知地区';
+    cityEl.textContent = '未知';
+  }
+
+  /* ================================================================== */
+  /*  模块二：实时时钟                                                    */
+  /* ================================================================== */
+  const WEEK_MAP = ['日', '一', '二', '三', '四', '五', '六'];
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function updateClock() {
+    const now = new Date();
+    const dateText = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 星期${WEEK_MAP[now.getDay()]}`;
+    const timeText = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    document.getElementById('clock-date').textContent = dateText;
+    document.getElementById('clock-time').textContent = timeText;
+  }
+
+  function initClock() {
+    updateClock();
+    setInterval(updateClock, 1000); // 每秒刷新
+  }
+
+  /* ================================================================== */
+  /*  模块三：随机诗词                                                    */
+  /* ================================================================== */
+  let currentPoemIndex = -1;
+
+  function renderRandomPoem() {
+    let idx;
+    // 尽量避免连续抽到同一句
+    do {
+      idx = Math.floor(Math.random() * POETRY_DB.length);
+    } while (POETRY_DB.length > 1 && idx === currentPoemIndex);
+    currentPoemIndex = idx;
+
+    const poem = POETRY_DB[idx];
+    const contentEl = document.getElementById('poem-content');
+    const authorEl = document.getElementById('poem-author');
+
+    // 重置动画实现淡入效果
+    contentEl.classList.remove('poem-fade');
+    authorEl.classList.remove('poem-fade');
+    void contentEl.offsetWidth; // 触发重排以重启动画
+    contentEl.classList.add('poem-fade');
+    authorEl.classList.add('poem-fade');
+
+    contentEl.textContent = poem.content;
+    authorEl.textContent = `—— ${poem.dynasty}·${poem.author} ${poem.source}`;
+  }
+
+  /* ================================================================== */
+  /*  模块四：导航按钮网格渲染                                            */
+  /* ================================================================== */
+  function renderNavGrid() {
+    const grid = document.getElementById('nav-grid');
+    grid.innerHTML = SITE_CONFIG.links.map((item) => {
+      const colorClass = COLOR_MAP[item.color] || COLOR_MAP.cyan;
+      const href = item.url && item.url !== '#' ? item.url : '#';
+      // 本站子页面（.html）在当前标签页打开，便于返回；外部链接新开标签页
+      const target = href !== '#' && href.endsWith('.html') ? '_self' : '_blank';
+      return `
+        <a href="${href}"
+           data-name="${item.name}"
+           data-configured="${item.url && item.url !== '#' ? '1' : '0'}"
+           target="${target}" rel="noopener noreferrer"
+           class="glass-card p-4 flex flex-col items-center justify-center gap-2.5 group cursor-pointer">
+          <span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg ${colorClass}
+                       transition-transform duration-300 group-hover:scale-110">
+            <i class="${item.icon}"></i>
+          </span>
+          <span class="text-sm text-slate-200 group-hover:text-cyan-200 transition-colors">${item.name}</span>
+        </a>`;
+    }).join('');
+
+    // 未配置链接的按钮：阻止跳转并提示
+    grid.querySelectorAll('a[data-configured="0"]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        showToast(`「${a.dataset.name}」链接暂未配置，请在代码 SITE_CONFIG.links 中修改`);
+      });
+    });
+  }
+
+  /* ================================================================== */
+  /*  模块五：访问统计（localStorage 本地计数）                            */
+  /*  PV：每次打开页面 +1；UV：同一浏览器首次访问 +1                      */
+  /*  ⚠ 纯前端本地计数仅作演示，不同设备/浏览器不互通；如需全局限量可接后端   */
+  /* ================================================================== */
+  const LS_PV  = 'zhishihunzi_stat_pv';
+  const LS_UV  = 'zhishihunzi_stat_uv';
+  const LS_MARK = 'zhishihunzi_visitor_mark';
+
+  function initStats() {
+    // 总访问量 PV
+    let pv = parseInt(localStorage.getItem(LS_PV) || '0', 10) + 1;
+    localStorage.setItem(LS_PV, String(pv));
+
+    // 访客人数 UV（首次访问的浏览器打标记）
+    let uv = parseInt(localStorage.getItem(LS_UV) || '0', 10);
+    if (!localStorage.getItem(LS_MARK)) {
+      uv += 1;
+      localStorage.setItem(LS_UV, String(uv));
+      localStorage.setItem(LS_MARK, new Date().toISOString());
+    }
+
+    countUp(document.getElementById('stat-pv'), pv);
+    countUp(document.getElementById('stat-uv'), uv);
+  }
+
+  /* ================================================================== */
+  /*  模块六：分享 & 邮箱                                                 */
+  /* ================================================================== */
+  function bindActions() {
+    // 分享：优先调用系统分享（手机），不支持则复制链接到剪贴板
+    document.getElementById('btn-share').addEventListener('click', async () => {
+      const shareData = { title: SITE_CONFIG.name, text: SITE_CONFIG.slogan, url: location.href };
+      if (navigator.share) {
+        try { await navigator.share(shareData); } catch (e) { /* 用户取消，不处理 */ }
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(location.href);
+        showToast('本站链接已复制，快分享给好友吧～');
+      } catch (e) {
+        // 剪贴板权限被拒时的降级方案
+        const input = document.createElement('textarea');
+        input.value = location.href;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+        showToast('本站链接已复制，快分享给好友吧～');
+      }
+    });
+
+    // 换一句诗词
+    document.getElementById('btn-poem').addEventListener('click', renderRandomPoem);
+
+    // 邮箱按钮
+    const emailBtn = document.getElementById('btn-email');
+    emailBtn.setAttribute('href', 'mailto:' + SITE_CONFIG.email);
+  }
+
+  /* ================================================================== */
+  /*  初始化入口                                                          */
+  /* ================================================================== */
+  function init() {
+    // 应用配置：壁纸、头像、站名、年份
+    document.getElementById('bg-img').src = SITE_CONFIG.background;
+    document.getElementById('avatar-img').src = SITE_CONFIG.avatar;
+    document.title = `${SITE_CONFIG.name} · 个人导航`;
+    document.getElementById('site-slogan').textContent = SITE_CONFIG.slogan;
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+
+    renderNavGrid();      // 导航按钮
+    initClock();          // 实时时钟
+    renderRandomPoem();   // 随机诗词
+    initStats();          // 访问统计
+    bindActions();        // 按钮事件
+    initVisitorLocation(); // IP 属地（异步，不阻塞页面渲染）
+  }
+
+  init();
+  </script>
+</body>
+</html>
