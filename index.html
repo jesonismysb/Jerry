@@ -193,12 +193,12 @@
                 bg-gradient-to-r from-cyan-300 to-sky-400 bg-clip-text text-transparent">
         --:--:--
       </p>
-      <p class="text-xs sm:text-sm text-slate-400">
+      <p id="city-row" class="text-xs sm:text-sm text-slate-400">
         <i class="fa-solid fa-location-dot text-cyan-400/80 mr-1"></i>
         当前所在城市：<span id="clock-city" class="text-cyan-200/90">定位中…</span>
       </p>
       <!-- 访客公网 IP 模块 -->
-      <div class="mt-4 pt-4 border-t border-white/10 flex flex-wrap items-center justify-center gap-x-1.5 text-xs sm:text-sm">
+      <div id="ip-box" class="mt-4 pt-4 border-t border-white/10 flex flex-wrap items-center justify-center gap-x-1.5 text-xs sm:text-sm">
         <i class="fa-solid fa-network-wired text-cyan-400/80"></i>
         <span class="text-slate-400">你的IP地址：</span>
         <span id="visitor-ip"
@@ -343,8 +343,9 @@
   ];
 
   /* ==================================================================
-   *  IP 属地接口列表（按顺序尝试，任一成功即停止；全部失败则显示“未知地区”）
-   *  均为免费、支持 HTTPS 与跨域(CORS)的公开接口
+   *  IP 属地接口列表（按顺序轮询，任一成功取出 ip；全部失败则合并提示）
+   *  均为免费、支持 HTTPS 与跨域(CORS: Access-Control-Allow-Origin)的公开接口
+   *  前 5 个返回地理信息，第 6 个 ipify 仅返回 IP 作最终兜底
    * ================================================================== */
   const IP_APIS = [
     { // ① 百度千帆免费接口
@@ -355,13 +356,21 @@
       url: 'https://api.vore.top/api/IPdata',
       parse: (d) => d && d.ipinfo ? { prov: d.ipinfo.prov, city: d.ipinfo.city, ip: d.ipinfo.cip } : null
     },
-    { // ③ UserAgentInfo 接口
+    { // ③ ipwho.is：免 Key、CORS 开放、含省市与 IP
+      url: 'https://ipwho.is/',
+      parse: (d) => d && d.success !== false ? { prov: d.region, city: d.city, ip: d.ip } : null
+    },
+    { // ④ UserAgentInfo 接口
       url: 'https://ip.useragentinfo.com/json',
       parse: (d) => d ? { prov: d.province, city: d.city, ip: d.ip } : null
     },
-    { // ④ ipapi.co 兜底（海外，可能为英文地名）
+    { // ⑤ ipapi.co 兜底（海外，可能为英文地名）
       url: 'https://ipapi.co/json/',
       parse: (d) => d && d.country ? { prov: d.region, city: d.city, ip: d.ip } : null
+    },
+    { // ⑥ ipify：CORS 开放、仅返回 {ip}，纯 IP 最终兜底
+      url: 'https://api.ipify.org?format=json',
+      parse: (d) => d && d.ip ? { ip: d.ip } : null
     }
   ];
 
@@ -379,8 +388,8 @@
     toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
   }
 
-  /** 带超时的 fetch JSON 请求 */
-  async function fetchJSON(url, timeout = 6000) {
+  /** 带超时的 fetch JSON 请求（默认 8 秒超时，避免卡住页面） */
+  async function fetchJSON(url, timeout = 8000) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeout);
     try {
@@ -498,6 +507,11 @@
           }
           if (loc.ip) {
             setVisitorIP(loc.ip);   // 拿到公网 IP，异步二次回填
+            if (!regionReady) {
+              // 仅拿到 IP、未拿到属地：属地给明确兜底，不停留在“定位中”
+              welcomeEl.innerHTML = '<i class="fa-solid fa-circle-question text-slate-400 mr-1"></i>未知地区';
+              cityEl.textContent = '未知';
+            }
             return;
           }
         }
@@ -506,12 +520,19 @@
         console.warn('[IP定位] 接口失败：', api.url, err.message || err);
       }
     }
-    // 全部接口失败时的兜底展示
+    // 全部接口超时/失败时的兜底展示
     if (!regionReady) {
       welcomeEl.innerHTML = '<i class="fa-solid fa-circle-question text-slate-400 mr-1"></i>未知地区';
-      cityEl.textContent = '未知';
+      // 城市与 IP 合并为一行友好提示：当前所在城市：未知 · IP：获取失败
+      document.getElementById('city-row').innerHTML =
+        '<i class="fa-solid fa-location-dot text-slate-500 mr-1"></i>' +
+        '当前所在城市：未知 <span class="text-slate-600 mx-1">·</span>IP：获取失败';
+      // 隐藏独立的 IP 模块（含分隔线），避免重复
+      document.getElementById('ip-box').classList.add('hidden');
+    } else {
+      // 已拿到城市但 IP 全部失败：城市正常显示，IP 行单独提示
+      setVisitorIP(null);
     }
-    setVisitorIP(null);
   }
 
   /* ================================================================== */
