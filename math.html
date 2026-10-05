@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端自适应视口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="中职数学（基础模块上下册）全套知识点、公式与习题 - 按十四五教材目录整理" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>中职数学（基础模块上下册）全套知识点&公式&习题 · 奈良</title>
+
+  <!-- 网页小图标（与主页一致的内联 SVG） -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 方式，无需构建） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <!-- KaTeX：LaTeX 数学公式渲染（CSS + 核心 + 自动渲染扩展） -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
+
+  <script>
+    /* Tailwind 自定义配置（与主页一致） */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#67e8f9' }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ==================== 全局基础样式 ==================== */
+    html, body { height: 100%; }
+    html, body { overflow-x: hidden; }   /* 移动端兜底，杜绝横向滚动 */
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ==================== 毛玻璃卡片（与主页同一套参数） ==================== */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+    /* 章节卡与面板不做上浮，长页面阅读更稳 */
+    .chapter-card, .chapter-card:hover { transform: none; }
+
+    /* ==================== 搜索输入框 ==================== */
+    .search-input {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      color: #e2e8f0;
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .search-input::placeholder { color: #94a3b8; }
+    .search-input:focus {
+      outline: none;
+      border-color: rgba(103, 232, 249, 0.45);
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+    }
+
+    /* ==================== 公式卡片（点击复制） ==================== */
+    .formula-card {
+      position: relative;
+      background: rgba(103, 232, 249, 0.05);
+      border: 1px solid rgba(103, 232, 249, 0.18);
+      border-radius: .9rem;
+      padding: .8rem 1rem;
+      cursor: pointer;
+      transition: all .25s ease;
+    }
+    .formula-card:hover {
+      border-color: rgba(103, 232, 249, 0.5);
+      background: rgba(103, 232, 249, 0.10);
+      box-shadow: 0 6px 20px rgba(8, 145, 178, 0.18);
+    }
+    .formula-card.flash {
+      border-color: rgba(94, 234, 212, 0.9);
+      box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.25);
+    }
+    .formula-card .katex-display { margin: .35rem 0 .15rem; }
+    .formula-card .katex { font-size: 1.02em; }
+
+    /* ==================== 小节标题 ==================== */
+    .sec-title {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: 14.5px; font-weight: 600; color: #e2e8f0;
+      margin: 1.4rem 0 .7rem;
+    }
+    .sec-title::before {
+      content: ''; width: 4px; height: 15px; border-radius: 999px;
+      background: linear-gradient(to bottom, #67e8f9, #0ea5e9);
+    }
+
+    /* 知识点条目 */
+    .kp-list { list-style: none; padding: 0; margin: 0; }
+    .kp-list li {
+      position: relative; padding-left: 1.15rem;
+      margin-bottom: .5rem; line-height: 1.85;
+      font-size: 13.5px; color: #b6c4d6;
+    }
+    .kp-list li::before {
+      content: ''; position: absolute; left: 0; top: .72em;
+      width: 5px; height: 5px; border-radius: 50%; background: #67e8f9;
+    }
+    .kp-list li.flash-kp {
+      color: #a5f3fc;
+      text-shadow: 0 0 12px rgba(103, 232, 249, .5);
+    }
+
+    /* ==================== 章内练习折叠（details 手风琴） ==================== */
+    details.practice-item {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: .8rem;
+      background: rgba(255, 255, 255, 0.03);
+      margin-bottom: .6rem;
+      overflow: hidden;
+    }
+    details.practice-item summary {
+      cursor: pointer; padding: .7rem .95rem;
+      font-size: 13.5px; color: #cbd5e1; line-height: 1.7;
+      list-style: none;
+    }
+    details.practice-item summary::-webkit-details-marker { display: none; }
+    details.practice-item summary::after {
+      content: '\f078'; font-family: 'Font Awesome 6 Free'; font-weight: 900;
+      float: right; font-size: 11px; color: #67e8f9; transition: transform .25s ease;
+    }
+    details.practice-item[open] summary::after { transform: rotate(180deg); }
+    .practice-body { padding: 0 .95rem .8rem; font-size: 13px; color: #b6c4d6; line-height: 1.9; }
+    .practice-body .opt { display: block; padding-left: .2rem; }
+    .ans-line {
+      margin-top: .5rem; padding: .5rem .75rem; border-radius: .6rem;
+      background: rgba(103, 232, 249, 0.07);
+      border-left: 3px solid rgba(103, 232, 249, .55);
+      color: #a5f3fc; font-size: 12.5px; line-height: 1.8;
+    }
+
+    /* ==================== 悬浮目录（桌面端右侧） ==================== */
+    #side-toc {
+      position: fixed; right: 18px; top: 50%; transform: translateY(-50%);
+      z-index: 40;
+    }
+    #side-toc a {
+      display: flex; align-items: center; justify-content: flex-end; gap: .5rem;
+      padding: .32rem 0; font-size: 11.5px; color: #7d8fa6;
+      transition: color .2s ease;
+    }
+    #side-toc a:hover { color: #67e8f9; }
+    #side-toc a .toc-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: rgba(148, 163, 184, .35);
+      transition: all .25s ease;
+    }
+    #side-toc a.active { color: #67e8f9; }
+    #side-toc a.active .toc-dot {
+      background: #67e8f9; box-shadow: 0 0 8px rgba(103, 232, 249, .8);
+      transform: scale(1.25);
+    }
+    #side-toc .toc-label { opacity: 0; transform: translateX(6px); transition: all .25s ease; }
+    #side-toc:hover .toc-label, #side-toc a.active .toc-label { opacity: 1; transform: translateX(0); }
+
+    /* 移动端目录 FAB */
+    #toc-fab {
+      position: fixed; right: 16px;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      z-index: 55; width: 46px; height: 46px; border-radius: 50%;
+      background: linear-gradient(135deg, rgba(8,145,178,.95), rgba(14,165,233,.95));
+      border: 1px solid rgba(103, 232, 249, 0.5);
+      color: #ecfeff; font-size: 17px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .45);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #toc-fab:active { transform: scale(.94); }
+
+    /* 目录抽屉 */
+    #toc-mask {
+      position: fixed; inset: 0; z-index: 60;
+      background: rgba(2, 6, 23, .6); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity .3s ease;
+    }
+    #toc-mask.show { opacity: 1; pointer-events: auto; }
+    #toc-sheet {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 61;
+      max-height: 76vh; overflow-y: auto;
+      background: rgba(11, 18, 32, .96);
+      border: 1px solid rgba(148, 197, 255, .18);
+      border-bottom: none;
+      border-radius: 1.4rem 1.4rem 0 0;
+      padding: 1.1rem 1.2rem calc(1.2rem + env(safe-area-inset-bottom));
+      transform: translateY(100%); transition: transform .32s ease;
+    }
+    #toc-sheet.show { transform: translateY(0); }
+    #toc-sheet a {
+      display: flex; align-items: center; gap: .7rem;
+      padding: .62rem .4rem; font-size: 13.5px; color: #cbd5e1;
+      border-bottom: 1px solid rgba(255,255,255,.05);
+    }
+    #toc-sheet a:active { color: #67e8f9; }
+    #toc-sheet .toc-num {
+      width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+      background: rgba(103, 232, 249, .1); color: #67e8f9;
+      font-size: 11px; display: flex; align-items: center; justify-content: center;
+    }
+    .toc-book-tag { font-size: 12px; color: #7d8fa6; padding: .7rem .2rem .3rem; }
+
+    /* ==================== 刷题板块 ==================== */
+    .quiz-chip {
+      font-size: 12px; padding: .4rem .85rem; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05); color: #cbd5e1;
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      transition: all .2s ease; cursor: pointer;
+    }
+    .quiz-chip:hover { color: #67e8f9; border-color: rgba(103,232,249,.4); }
+    .quiz-chip.active {
+      background: rgba(8, 145, 178, 0.9); color: #ecfeff; border-color: transparent;
+    }
+    .quiz-q {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: .9rem; padding: .9rem 1rem;
+      margin-bottom: .8rem; background: rgba(255, 255, 255, 0.03);
+      transition: border-color .3s ease, background .3s ease;
+    }
+    .quiz-q.correct { border-color: rgba(52, 211, 153, .55); background: rgba(52, 211, 153, .06); }
+    .quiz-q.wrong   { border-color: rgba(251, 113, 133, .55); background: rgba(251, 113, 133, .06); }
+    .quiz-opt {
+      display: flex; align-items: flex-start; gap: .55rem;
+      padding: .45rem .3rem; font-size: 13px; color: #c2cfdf;
+      cursor: pointer; line-height: 1.7; border-radius: .5rem;
+    }
+    .quiz-opt:hover { background: rgba(103, 232, 249, .06); }
+    .quiz-opt input { margin-top: .32rem; accent-color: #22d3ee; }
+    .quiz-opt.pick-right { color: #6ee7b7; }
+    .quiz-opt.pick-wrong { color: #fb7185; }
+    .quiz-explain {
+      margin-top: .55rem; padding: .55rem .8rem; border-radius: .6rem;
+      background: rgba(103, 232, 249, 0.07);
+      border-left: 3px solid rgba(103, 232, 249, .5);
+      font-size: 12.5px; color: #b6c9da; line-height: 1.8;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      font-size: 13.5px; font-weight: 500; color: #ecfeff;
+      padding: .55rem 1.3rem; border-radius: 999px;
+      background: linear-gradient(to right, rgba(8,145,178,.9), rgba(14,165,233,.9));
+      border: 1px solid rgba(103, 232, 249, 0.4);
+      box-shadow: 0 6px 20px rgba(8, 145, 178, .3);
+      cursor: pointer; transition: all .25s ease;
+    }
+    .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 6px 26px rgba(103,232,249,.4); }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+      font-size: 13px; color: #cbd5e1;
+      padding: .55rem 1.1rem; border-radius: 999px;
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10);
+      cursor: pointer; transition: all .25s ease;
+    }
+    .btn-ghost:hover { color: #67e8f9; border-color: rgba(103,232,249,.4); }
+
+    /* 搜索结果面板 */
+    #search-results {
+      position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 45;
+      max-height: 320px; overflow-y: auto;
+      background: rgba(11, 18, 32, .97);
+      border: 1px solid rgba(148, 197, 255, .2);
+      border-radius: 1rem;
+      box-shadow: 0 16px 44px rgba(2, 8, 23, .55);
+      padding: .4rem;
+      display: none;
+    }
+    #search-results a {
+      display: block; padding: .55rem .7rem; border-radius: .6rem;
+      font-size: 12.5px; color: #c2cfdf; line-height: 1.6;
+    }
+    #search-results a:hover, #search-results a:active { background: rgba(103,232,249,.08); color: #67e8f9; }
+    #search-results .sr-type {
+      display: inline-block; font-size: 10.5px; margin-right: .4rem;
+      padding: .05rem .45rem; border-radius: 999px;
+      background: rgba(103,232,249,.12); color: #67e8f9;
+    }
+    #search-results .sr-ch { color: #7d8fa6; font-size: 11px; }
+    #search-results .sr-empty { padding: .9rem; text-align: center; color: #7d8fa6; font-size: 12.5px; }
+
+    /* ==================== Toast ==================== */
+    #toast {
+      position: fixed; left: 50%;
+      bottom: calc(28px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.94);
+      color: #ecfeff; font-size: 13.5px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .4);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 80; max-width: 86vw; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-item { animation: fadeUp .7s ease both; }
+    .fade-item:nth-child(1) { animation-delay: .05s; }
+    .fade-item:nth-child(2) { animation-delay: .12s; }
+    .fade-item:nth-child(3) { animation-delay: .19s; }
+
+    #bg-overlay { transition: opacity .8s ease; }
+    #bg-overlay.loading {
+      background: linear-gradient(180deg, rgba(2,6,23,.97) 0%, rgba(2,6,23,.92) 50%, rgba(2,6,23,.98) 100%) !important;
+    }
+    #page-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <!-- ================================================================ -->
+  <!-- 背景层：动漫壁纸 + 遮罩（与主页同一张壁纸地址）                    -->
+  <!-- ================================================================ -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <div id="bg-overlay" class="absolute inset-0 loading"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- 顶部导航栏：返回首页 + 页面标题                                    -->
+  <!-- ================================================================ -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-square-root-variable text-cyan-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">中职数学 · 知识点 & 公式</h1>
+      </div>
+      <a href="./blog.html" title="返回博客"
+         class="min-w-[86px] flex justify-end">
+        <span class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
+                     hover:bg-cyan-400/20 hover:text-cyan-300 text-slate-300 transition-all">
+          <i class="fa-solid fa-feather"></i>
+        </span>
+      </a>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- ============================================================ -->
+    <!-- 专题头图卡：简介 + 上下册速览                                    -->
+    <!-- ============================================================ -->
+    <section class="glass-card chapter-card p-5 sm:p-7 fade-item">
+      <h2 class="text-lg sm:text-xl font-bold text-slate-100 leading-snug">
+        中职数学（基础模块上下册）<span class="text-cyan-300">全套知识点 & 公式 & 习题</span>
+      </h2>
+      <p class="text-[13px] text-slate-400 mt-2.5 leading-relaxed">
+        严格按照「十四五」中职数学基础模块上下册教材目录整理，共 8 章。每章包含
+        <span class="text-cyan-200">核心知识点梳理、必背公式汇总、基础单选练习</span>；
+        点击任意公式卡片可一键复制，页底刷题板块支持自动批改与计分。
+      </p>
+      <div class="grid sm:grid-cols-2 gap-3 mt-4">
+        <a href="#ch1" class="rounded-xl border border-rose-300/20 bg-rose-400/5 px-4 py-3 block hover:border-rose-300/50 transition">
+          <p class="text-[12.5px] font-semibold text-rose-200"><i class="fa-solid fa-book mr-1.5"></i>上册 · 第 1–4 章</p>
+          <p class="text-[11.5px] text-slate-400 mt-1 leading-relaxed">集合与简易逻辑 · 不等式 · 函数 · 三角函数</p>
+        </a>
+        <a href="#ch5" class="rounded-xl border border-emerald-300/20 bg-emerald-400/5 px-4 py-3 block hover:border-emerald-300/50 transition">
+          <p class="text-[12.5px] font-semibold text-emerald-200"><i class="fa-solid fa-book mr-1.5"></i>下册 · 第 5–8 章</p>
+          <p class="text-[11.5px] text-slate-400 mt-1 leading-relaxed">指数函数与对数函数 · 直线与圆 · 几何体 · 概率统计</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 搜索卡片：搜索知识点 / 公式                                     -->
+    <!-- ============================================================ -->
+    <section class="glass-card chapter-card p-4 sm:p-5 fade-item relative z-30">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-[14px] text-cyan-300/70 text-sm"></i>
+        <input id="search-input" type="text" autocomplete="off"
+               placeholder="搜索知识点 / 公式，如：集合、韦达定理、sin、体积…"
+               class="search-input w-full rounded-full pl-10 pr-9 py-2.5 text-sm" />
+        <button id="search-clear" class="hidden absolute right-3.5 top-3 text-slate-400 hover:text-cyan-300">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+        <div id="search-results"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- 章节容器（8 章由 JS 数据驱动渲染）                               -->
+    <!-- ============================================================ -->
+    <div id="chapters-box"></div>
+
+    <!-- ============================================================ -->
+    <!-- 底部刷题板块                                                    -->
+    <!-- ============================================================ -->
+    <section id="quiz" class="glass-card chapter-card p-4 sm:p-6 fade-item">
+      <h2 class="text-base sm:text-lg font-semibold flex items-center gap-2 text-slate-100">
+        <i class="fa-solid fa-pen-to-square text-cyan-300"></i> 在线刷题 · 自动批改
+      </h2>
+      <p class="text-[12px] text-slate-400 mt-2 leading-relaxed">选择题库章节后开始作答，提交后自动批改、显示答案解析并计分。</p>
+
+      <!-- 章节选择 chips -->
+      <div id="quiz-chips" class="flex flex-wrap gap-2 mt-4"></div>
+
+      <!-- 计分横幅 -->
+      <div id="quiz-score" class="hidden mt-4 rounded-xl px-4 py-3.5 text-center border"></div>
+
+      <!-- 题目区 -->
+      <div id="quiz-questions" class="mt-5"></div>
+
+      <!-- 操作按钮 -->
+      <div id="quiz-actions" class="flex flex-wrap gap-2.5 mt-2 hidden">
+        <button id="quiz-submit" class="btn-primary"><i class="fa-solid fa-check-double"></i>提交批改</button>
+        <button id="quiz-retry" class="btn-ghost"><i class="fa-solid fa-rotate-right"></i>重新练习</button>
+        <button id="quiz-change" class="btn-ghost"><i class="fa-solid fa-list"></i>换个章节</button>
+      </div>
+
+      <!-- 未选题空状态 -->
+      <div id="quiz-empty" class="text-center py-8">
+        <i class="fa-solid fa-keyboard text-3xl text-cyan-300/30"></i>
+        <p class="text-xs text-slate-500 mt-3">先在上方选择一个章节，开始刷题吧～</p>
+      </div>
+    </section>
+
+    <!-- 底部版权 -->
+    <footer id="page-footer" class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1">
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a> · <a href="./blog.html" class="hover:text-cyan-300 transition-colors">返回博客</a></p>
+      <p>Powered by KaTeX + TailwindCSS + Vanilla JavaScript</p>
+    </footer>
+  </main>
+
+  <!-- 桌面端悬浮目录（≥1280px 显示） -->
+  <nav id="side-toc" class="hidden xl:block"></nav>
+
+  <!-- 移动端目录 FAB + 抽屉 -->
+  <button id="toc-fab" class="xl:hidden" title="章节目录"><i class="fa-solid fa-list-ul"></i></button>
+  <div id="toc-mask"></div>
+  <div id="toc-sheet"></div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+  /* ==================================================================
+   *  教材章节数据（严格按「十四五中职数学基础模块」上下册目录）
+   *  points   本章核心知识点（name 名称，desc 说明，支持 $...$ 公式）
+   *  formulas 必背公式（name 名称，latex LaTeX 源码）
+   *  questions 基础单选题（q 题干，options 四选项，answer 正确序号，explain 解析）
+   * ================================================================== */
+  const CHAPTERS = [
+  {
+    id: 'ch1', no: 1, book: '上册', emoji: '📕',
+    title: '集合与简易逻辑',
+    points: [
+      { name: '集合的概念', desc: '把一些能够确定的对象看成一个整体，就形成一个集合；集合中的每个对象叫元素。元素具有确定性、互异性、无序性。' },
+      { name: '元素与集合的关系', desc: '对象 $a$ 是集合 $A$ 的元素记作 $a\\in A$；不是其元素记作 $a\\notin A$。' },
+      { name: '常用数集', desc: '自然数集 $\\mathbb{N}$、正整数集 $\\mathbb{N}^*$、整数集 $\\mathbb{Z}$、有理数集 $\\mathbb{Q}$、实数集 $\\mathbb{R}$。' },
+      { name: '集合的表示法', desc: '列举法（如 $\\{1,2,3\\}$）与描述法（如 $\\{x\\mid 1\\le x<5\\}$）。' },
+      { name: '集合间的关系', desc: '子集 $A\\subseteq B$、真子集 $A\\subsetneqq B$、集合相等 $A=B$；规定空集 $\\varnothing$ 是任何集合的子集。' },
+      { name: '充要条件', desc: '若 $p\\Rightarrow q$，则 $p$ 是 $q$ 的充分条件、$q$ 是 $p$ 的必要条件；若 $p\\Leftrightarrow q$，则互为充要条件。' }
+    ],
+    formulas: [
+      { name: '交集', latex: 'A\\cap B=\\{x\\mid x\\in A\\text{ 且 }x\\in B\\}' },
+      { name: '并集', latex: 'A\\cup B=\\{x\\mid x\\in A\\text{ 或 }x\\in B\\}' },
+      { name: '补集', latex: '\\complement_U A=\\{x\\mid x\\in U\\text{ 且 }x\\notin A\\}' },
+      { name: '子集个数', latex: '\\text{若 }|A|=n\\text{，则子集数 }2^n\\text{，真子集数 }2^n-1' }
+    ],
+    questions: [
+      {
+        q: '集合 $A=\\{1,2,3,4\\}$，则集合 $A$ 的子集共有（　）',
+        options: ['$4$ 个', '$8$ 个', '$16$ 个', '$32$ 个'], answer: 2,
+        explain: '含 $n$ 个元素的集合子集数为 $2^n=2^4=16$。'
+      },
+      {
+        q: '设 $A=\\{x\\mid 0\\le x<2\\}$，$B=\\{x\\mid 1<x\\le 3\\}$，则 $A\\cap B=$（　）',
+        options: ['$\\{x\\mid 0\\le x\\le 3\\}$', '$\\{x\\mid 1<x<2\\}$', '$\\{x\\mid 0\\le x<1\\}$', '$\\{x\\mid 2<x\\le 3\\}$'], answer: 1,
+        explain: '取两个区间的公共部分，得 $1<x<2$（端点都不取）。'
+      },
+      {
+        q: '"$x>3$" 是 "$x>1$" 的（　）',
+        options: ['充分不必要条件', '必要不充分条件', '充要条件', '既不充分也不必要条件'], answer: 0,
+        explain: '$x>3\\Rightarrow x>1$，但反之不成立，故为充分不必要条件。'
+      },
+      {
+        q: '全集 $U=\\{1,2,3,4,5\\}$，$A=\\{1,3,5\\}$，则 $\\complement_U A=$（　）',
+        options: ['$\\{2,4\\}$', '$\\{1,3,5\\}$', '$\\{1,2,3\\}$', '$\\{4,5\\}$'], answer: 0,
+        explain: '全集中去掉 $A$ 的元素，剩下 $\\{2,4\\}$。'
+      }
+    ]
+  },
+  {
+    id: 'ch2', no: 2, book: '上册', emoji: '📕',
+    title: '不等式',
+    points: [
+      { name: '不等式的基本性质', desc: '对称性：$a>b\\Leftrightarrow b<a$；传递性：$a>b,b>c\\Rightarrow a>c$；可加性：$a>b\\Leftrightarrow a+c>b+c$。' },
+      { name: '可乘性', desc: '$a>b,\\ c>0\\Rightarrow ac>bc$；$a>b,\\ c<0\\Rightarrow ac<bc$（乘负数要变号）。' },
+      { name: '一元二次不等式', desc: '结合二次函数图像求解：先求对应方程的根 $x_1,x_2$，再根据开口方向写解集。' },
+      { name: '绝对值不等式', desc: '$|x|<a\\ (a>0)\\Leftrightarrow -a<x<a$；$|x|>a\\Leftrightarrow x<-a$ 或 $x>a$。' },
+      { name: '区间', desc: '开区间 $(a,b)$、闭区间 $[a,b]$、半开半闭区间 $[a,b)$、$(a,b]$；$[a,+\\infty)$ 等无穷区间。' }
+    ],
+    formulas: [
+      { name: '加法性质', latex: 'a>b\\Rightarrow a+c>b+c' },
+      { name: '乘法性质', latex: 'a>b,\\ c>0\\Rightarrow ac>bc;\\quad a>b,\\ c<0\\Rightarrow ac<bc' },
+      { name: '二次不等式（Δ>0）', latex: 'ax^2+bx+c>0\\ (a>0)\\Rightarrow x<x_1\\text{ 或 }x>x_2' },
+      { name: '二次不等式（Δ>0）', latex: 'ax^2+bx+c<0\\ (a>0)\\Rightarrow x_1<x<x_2' },
+      { name: '绝对值不等式', latex: '|x|<a\\Leftrightarrow -a<x<a;\\qquad |x|>a\\Leftrightarrow x<-a\\text{ 或 }x>a' }
+    ],
+    questions: [
+      {
+        q: '不等式 $x^2-x-6<0$ 的解集是（　）',
+        options: ['$\\{x\\mid x<-2\\}$', '$\\{x\\mid x>3\\}$', '$\\{x\\mid -2<x<3\\}$', '全体实数 $\\mathbb{R}$'], answer: 2,
+        explain: '因式分解得 $(x-3)(x+2)<0$，两根为 $-2,3$，开口向上，小于零取两根之间。'
+      },
+      {
+        q: '不等式 $|2x-1|<3$ 的解集为（　）',
+        options: ['$\\{x\\mid -1<x<2\\}$', '$\\{x\\mid x<2\\}$', '$\\{x\\mid x>-1\\}$', '$\\{x\\mid x<-1\\text{ 或 }x>2\\}$'], answer: 0,
+        explain: '化为 $-3<2x-1<3$，解得 $-1<x<2$。'
+      },
+      {
+        q: '若 $a>b$，则下列不等式一定成立的是（　）',
+        options: ['$ac>bc$', '$a-c>b-c$', '$a^2>b^2$', '$\\dfrac{1}{a}<\\dfrac{1}{b}$'], answer: 1,
+        explain: '不等式两边同加（减）同一个数，不等号方向不变；其余选项受 $c$ 的正负或 $a,b$ 取值影响。'
+      },
+      {
+        q: '不等式 $-3x>6$ 的解集是（　）',
+        options: ['$x>2$', '$x>-2$', '$x<-2$', '$x<2$'], answer: 2,
+        explain: '两边除以 $-3$，不等号要变向，得 $x<-2$。'
+      }
+    ]
+  },
+  {
+    id: 'ch3', no: 3, book: '上册', emoji: '📕',
+    title: '函数（一次函数、二次函数）',
+    points: [
+      { name: '函数的概念', desc: '设非空数集 $A$，按某种对应法则 $f$，对 $A$ 中任意 $x$ 都有唯一确定的 $y$ 与之对应。三要素：定义域、值域、对应法则。' },
+      { name: '函数的表示法', desc: '解析法、列表法、图像法。' },
+      { name: '单调性', desc: '区间内 $x_1<x_2\\Rightarrow f(x_1)<f(x_2)$ 为增函数；反之为减函数。' },
+      { name: '奇偶性', desc: '奇函数满足 $f(-x)=-f(x)$，图像关于原点对称；偶函数满足 $f(-x)=f(x)$，图像关于 $y$ 轴对称。' },
+      { name: '一次函数', desc: '$y=kx+b\\ (k\\ne0)$：图像为一条直线；$k>0$ 递增、$k<0$ 递减；$b$ 为 $y$ 轴截距；$b=0$ 时为正比例函数。' },
+      { name: '二次函数', desc: '$y=ax^2+bx+c\\ (a\\ne0)$：图像是抛物线；$a>0$ 开口向上、$a<0$ 开口向下；有顶点、对称轴。' }
+    ],
+    formulas: [
+      { name: '顶点坐标', latex: '\\left(-\\frac{b}{2a},\\frac{4ac-b^2}{4a}\\right)' },
+      { name: '对称轴', latex: 'x=-\\frac{b}{2a}' },
+      { name: '顶点式', latex: 'y=a(x-h)^2+k\\quad\\text{顶点 }(h,k)' },
+      { name: '判别式', latex: '\\Delta=b^2-4ac' },
+      { name: '韦达定理', latex: 'x_1+x_2=-\\frac{b}{a},\\qquad x_1x_2=\\frac{c}{a}' }
+    ],
+    questions: [
+      {
+        q: '二次函数 $y=x^2-2x-3$ 的顶点坐标是（　）',
+        options: ['$(1,-4)$', '$(-1,-4)$', '$(1,4)$', '$(-1,0)$'], answer: 0,
+        explain: '配方 $y=(x-1)^2-4$，顶点为 $(1,-4)$；也可用公式 $-\\frac b{2a}=1$。'
+      },
+      {
+        q: '抛物线 $y=x^2-2x-3$ 的对称轴是（　）',
+        options: ['直线 $x=-1$', '直线 $x=1$', '直线 $x=2$', '$y$ 轴'], answer: 1,
+        explain: '对称轴为 $x=-\\dfrac{b}{2a}=-\\dfrac{-2}{2}=1$。'
+      },
+      {
+        q: '一次函数 $y=2x+1$ 的图像不经过（　）',
+        options: ['第一象限', '第二象限', '第三象限', '第四象限'], answer: 3,
+        explain: '$k=2>0,b=1>0$，直线从左下向右上且交 $y$ 轴于正半轴，经过一、二、三象限，不过第四象限。'
+      },
+      {
+        q: '设 $f(x)=x^2+1$，则 $f(-2)=$（　）',
+        options: ['$3$', '$5$', '$-3$', '$4$'], answer: 1,
+        explain: '$f(-2)=(-2)^2+1=4+1=5$。'
+      }
+    ]
+  },
+  {
+    id: 'ch4', no: 4, book: '上册', emoji: '📕',
+    title: '三角函数',
+    points: [
+      { name: '角的概念推广', desc: '正角（逆时针）、负角（顺时针）、零角；与角 $\\alpha$ 终边相同的角为 $\\{\\beta\\mid\\beta=\\alpha+k\\cdot360^\\circ, k\\in\\mathbb{Z}\\}$。' },
+      { name: '弧度制', desc: '长度等于半径的圆弧所对圆心角为 $1$ 弧度；$180^\\circ=\\pi$ 弧度，弧长 $l=|\\alpha|r$。' },
+      { name: '任意角的三角函数', desc: '设终边上点 $P(x,y)$，$r=\\sqrt{x^2+y^2}$，则 $\\sin\\alpha=\\dfrac{y}{r}$，$\\cos\\alpha=\\dfrac{x}{r}$，$\\tan\\alpha=\\dfrac{y}{x}$。' },
+      { name: '同角三角函数关系', desc: '$\\sin^2\\alpha+\\cos^2\\alpha=1$；$\\tan\\alpha=\\dfrac{\\sin\\alpha}{\\cos\\alpha}$。' },
+      { name: '诱导公式', desc: '口诀"奇变偶不变，符号看象限"；如 $\\sin(-\\alpha)=-\\sin\\alpha$，$\\cos(\\pi-\\alpha)=-\\cos\\alpha$。' },
+      { name: '三角函数的图像与性质', desc: '$y=\\sin x$、$y=\\cos x$ 周期为 $2\\pi$；$y=\\tan x$ 周期为 $\\pi$。$y=A\\sin(\\omega x+\\varphi)$ 的周期 $T=\\dfrac{2\\pi}{|\\omega|}$。' }
+    ],
+    formulas: [
+      { name: '平方关系', latex: '\\sin^2\\alpha+\\cos^2\\alpha=1' },
+      { name: '商数关系', latex: '\\tan\\alpha=\\frac{\\sin\\alpha}{\\cos\\alpha}' },
+      { name: '角度弧度换算', latex: '1^\\circ=\\frac{\\pi}{180}\\text{ rad}' },
+      { name: '弧长公式', latex: 'l=|\\alpha|\\,r' },
+      { name: '正弦型函数周期', latex: 'T=\\frac{2\\pi}{|\\omega|}' },
+      { name: '二倍角公式', latex: '\\sin2\\alpha=2\\sin\\alpha\\cos\\alpha,\\quad\\cos2\\alpha=\\cos^2\\alpha-\\sin^2\\alpha' }
+    ],
+    questions: [
+      {
+        q: '$\\sin30^\\circ+\\cos60^\\circ=$（　）',
+        options: ['$1$', '$\\dfrac{1}{2}$', '$\\dfrac{\\sqrt3}{2}$', '$\\sqrt3$'], answer: 0,
+        explain: '$\\sin30^\\circ=\\dfrac12$，$\\cos60^\\circ=\\dfrac12$，和为 $1$。'
+      },
+      {
+        q: '$135^\\circ$ 化为弧度是（　）',
+        options: ['$\\dfrac{\\pi}{4}$', '$\\dfrac{\\pi}{2}$', '$\\dfrac{3\\pi}{4}$', '$\\dfrac{2\\pi}{3}$'], answer: 2,
+        explain: '$135^\\circ\\times\\dfrac{\\pi}{180^\\circ}=\\dfrac{3\\pi}{4}$。'
+      },
+      {
+        q: '$\\sin^2 15^\\circ+\\cos^2 15^\\circ=$（　）',
+        options: ['$0$', '$1$', '$2$', '$\\dfrac{1}{2}$'], answer: 1,
+        explain: '由同角三角函数平方关系，对任意角都等于 $1$。'
+      },
+      {
+        q: '函数 $y=2\\sin\\left(3x+\\dfrac{\\pi}{6}\\right)$ 的最小正周期是（　）',
+        options: ['$2\\pi$', '$\\pi$', '$\\dfrac{2\\pi}{3}$', '$\\dfrac{\\pi}{3}$'], answer: 2,
+        explain: '$T=\\dfrac{2\\pi}{|\\omega|}=\\dfrac{2\\pi}{3}$。'
+      }
+    ]
+  },
+  {
+    id: 'ch5', no: 5, book: '下册', emoji: '📗',
+    title: '指数函数与对数函数',
+    points: [
+      { name: 'n 次方根与分数指数幂', desc: '$a^{\\frac{m}{n}}=\\sqrt[n]{a^m}\\ (a>0)$；$a^{-\\frac{m}{n}}=\\dfrac{1}{a^{\\frac{m}{n}}}$。' },
+      { name: '实数指数幂运算法则', desc: '$a^m\\cdot a^n=a^{m+n}$；$(a^m)^n=a^{mn}$；$(ab)^n=a^nb^n$。' },
+      { name: '指数函数', desc: '$y=a^x\\ (a>0,a\\ne1)$，定义域为 $\\mathbb{R}$、值域 $(0,+\\infty)$，图像过定点 $(0,1)$；$a>1$ 时递增，$0<a<1$ 时递减。' },
+      { name: '对数的概念', desc: '$a^b=N\\Leftrightarrow\\log_a N=b\\ (a>0,a\\ne1,N>0)$；$\\log_a 1=0$，$\\log_a a=1$，$a^{\\log_a N}=N$。' },
+      { name: '对数运算性质', desc: '$\\log_a(MN)=\\log_a M+\\log_a N$；$\\log_a\\dfrac{M}{N}=\\log_a M-\\log_a N$；$\\log_a M^n=n\\log_a M$。' },
+      { name: '对数函数', desc: '$y=\\log_a x\\ (a>0,a\\ne1)$，定义域 $(0,+\\infty)$，图像过定点 $(1,0)$；与同底指数函数互为反函数。' }
+    ],
+    formulas: [
+      { name: '分数指数幂', latex: 'a^{\\frac{m}{n}}=\\sqrt[n]{a^m}' },
+      { name: '幂的运算', latex: 'a^m\\cdot a^n=a^{m+n},\\quad(a^m)^n=a^{mn}' },
+      { name: '对数定义', latex: 'a^b=N\\Leftrightarrow b=\\log_a N' },
+      { name: '积的对数', latex: '\\log_a(MN)=\\log_a M+\\log_a N' },
+      { name: '幂的对数', latex: '\\log_a M^n=n\\log_a M' },
+      { name: '换底公式', latex: '\\log_a b=\\frac{\\ln b}{\\ln a}' }
+    ],
+    questions: [
+      {
+        q: '$\\log_2 8=$（　）',
+        options: ['$2$', '$3$', '$4$', '$8$'], answer: 1,
+        explain: '$2^3=8$，故 $\\log_2 8=3$。'
+      },
+      {
+        q: '$2^{\\frac{3}{2}}=$（　）',
+        options: ['$\\sqrt[3]{4}$', '$2\\sqrt2$', '$\\sqrt6$', '$3\\sqrt2$'], answer: 1,
+        explain: '$2^{\\frac32}=\\sqrt{2^3}=\\sqrt8=2\\sqrt2$。'
+      },
+      {
+        q: '$lg2+lg5=$（　）',
+        options: ['$0$', '$1$', '$lg7$', '$7$'], answer: 1,
+        explain: '$lg2+lg5=lg(2\\times5)=lg10=1$。'
+      },
+      {
+        q: '$\\log_3 27=$（　）',
+        options: ['$9$', '$2$', '$3$', '$\\dfrac{1}{3}$'], answer: 2,
+        explain: '$3^3=27$，所以对数值为 $3$。'
+      }
+    ]
+  },
+  {
+    id: 'ch6', no: 6, book: '下册', emoji: '📗',
+    title: '直线与圆的方程',
+    points: [
+      { name: '两点间距离与中点', desc: '$|P_1P_2|=\\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}$；中点 $\\left(\\dfrac{x_1+x_2}{2},\\dfrac{y_1+y_2}{2}\\right)$。' },
+      { name: '直线的倾斜角与斜率', desc: '$k=\\tan\\alpha\\ (\\alpha\\ne90^\\circ)$；过两点 $k=\\dfrac{y_2-y_1}{x_2-x_1}$。' },
+      { name: '直线方程', desc: '点斜式 $y-y_1=k(x-x_1)$；斜截式 $y=kx+b$；一般式 $Ax+By+C=0$。' },
+      { name: '两条直线的位置关系', desc: '平行：$k_1=k_2$ 且截距不等；垂直：$k_1k_2=-1$；相交求联立方程组的解。' },
+      { name: '点到直线的距离', desc: '点 $P(x_0,y_0)$ 到 $Ax+By+C=0$ 的距离 $d=\\dfrac{|Ax_0+By_0+C|}{\\sqrt{A^2+B^2}}$。' },
+      { name: '圆的方程', desc: '标准方程 $(x-a)^2+(y-b)^2=r^2$，圆心 $(a,b)$、半径 $r$；直线与圆按圆心到直线距离与 $r$ 比较判断位置关系。' }
+    ],
+    formulas: [
+      { name: '两点距离公式', latex: '|P_1P_2|=\\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}' },
+      { name: '斜率公式', latex: 'k=\\frac{y_2-y_1}{x_2-x_1}' },
+      { name: '点斜式', latex: 'y-y_1=k(x-x_1)' },
+      { name: '点到直线距离', latex: 'd=\\frac{|Ax_0+By_0+C|}{\\sqrt{A^2+B^2}}' },
+      { name: '圆的标准方程', latex: '(x-a)^2+(y-b)^2=r^2' },
+      { name: '垂直条件', latex: 'l_1\\perp l_2\\Leftrightarrow k_1k_2=-1' }
+    ],
+    questions: [
+      {
+        q: '$A(1,2)$、$B(4,6)$ 两点间的距离是（　）',
+        options: ['$3$', '$4$', '$5$', '$7$'], answer: 2,
+        explain: '$\\sqrt{(4-1)^2+(6-2)^2}=\\sqrt{9+16}=5$。'
+      },
+      {
+        q: '过点 $(0,1)$ 且斜率为 $2$ 的直线方程是（　）',
+        options: ['$y=2x-1$', '$y=2x+1$', '$y=x+2$', '$y=2x$'], answer: 1,
+        explain: '点斜式 $y-1=2(x-0)$，即 $y=2x+1$。'
+      },
+      {
+        q: '圆心为原点、半径为 $3$ 的圆的方程是（　）',
+        options: ['$x^2+y^2=3$', '$x^2+y^2=9$', '$(x-3)^2+y^2=0$', '$x^2+y^2=6$'], answer: 1,
+        explain: '代入标准方程 $x^2+y^2=3^2=9$。'
+      },
+      {
+        q: '点 $(0,0)$ 到直线 $3x+4y-5=0$ 的距离是（　）',
+        options: ['$5$', '$\\dfrac{1}{5}$', '$1$', '$\\dfrac{5}{7}$'], answer: 2,
+        explain: '$d=\\dfrac{|3\\times0+4\\times0-5|}{\\sqrt{3^2+4^2}}=\\dfrac{5}{5}=1$。'
+      }
+    ]
+  },
+  {
+    id: 'ch7', no: 7, book: '下册', emoji: '📗',
+    title: '简单几何体',
+    points: [
+      { name: '平面的基本性质', desc: '三个基本事实：不共线三点确定一个平面；两个平面若有一个公共点则相交于过该点的一条直线等。' },
+      { name: '空间直线与平面', desc: '直线与直线有平行、相交、异面三种关系；直线与平面有在平面内、平行、相交三种关系。' },
+      { name: '线面、面面位置关系', desc: '线面平行判定：平面外一条直线与平面内一条直线平行；线面垂直：直线垂直于平面内两条相交直线。' },
+      { name: '常见多面体', desc: '棱柱（两个互相平行的全等底面、侧面为平行四边形）、棱锥、棱台。' },
+      { name: '常见旋转体', desc: '圆柱、圆锥、圆台、球（半圆绕其直径旋转一周所得）。' },
+      { name: '三视图', desc: '正视图（从前向后）、侧视图（从左向右）、俯视图（从上向下），"长对正、高平齐、宽相等"。' }
+    ],
+    formulas: [
+      { name: '柱体体积', latex: 'V_{\\text{柱}}=Sh' },
+      { name: '锥体体积', latex: 'V_{\\text{锥}}=\\frac{1}{3}Sh' },
+      { name: '球的体积', latex: 'V_{\\text{球}}=\\frac{4}{3}\\pi r^3' },
+      { name: '球的表面积', latex: 'S_{\\text{球}}=4\\pi r^2' },
+      { name: '圆柱侧面积', latex: 'S_{\\text{圆柱侧}}=2\\pi rh' },
+      { name: '圆锥侧面积', latex: 'S_{\\text{圆锥侧}}=\\pi rl' }
+    ],
+    questions: [
+      {
+        q: '正方体的棱长为 $2$，其体积为（　）',
+        options: ['$4$', '$6$', '$8$', '$12$'], answer: 2,
+        explain: '$V=a^3=2^3=8$。'
+      },
+      {
+        q: '球的半径为 $3$，其体积为（　）',
+        options: ['$12\\pi$', '$36\\pi$', '$27\\pi$', '$9\\pi$'], answer: 1,
+        explain: '$V=\\dfrac43\\pi r^3=\\dfrac43\\pi\\times27=36\\pi$。'
+      },
+      {
+        q: '圆柱底面半径为 $2$、高为 $5$，其体积为（　）',
+        options: ['$10\\pi$', '$20\\pi$', '$25\\pi$', '$40\\pi$'], answer: 1,
+        explain: '$V=\\pi r^2h=\\pi\\times4\\times5=20\\pi$。'
+      },
+      {
+        q: '球的半径为 $1$，其表面积为（　）',
+        options: ['$\\pi$', '$2\\pi$', '$4\\pi$', '$\\dfrac{4}{3}\\pi$'], answer: 2,
+        explain: '$S=4\\pi r^2=4\\pi$。'
+      }
+    ]
+  },
+  {
+    id: 'ch8', no: 8, book: '下册', emoji: '📗',
+    title: '概率与统计初步',
+    points: [
+      { name: '随机事件与概率', desc: '在一定条件下可能发生也可能不发生的事件叫随机事件；大量重复试验中事件发生的频率稳定在某个常数附近，该常数即概率，$0\\le P(A)\\le1$。' },
+      { name: '古典概型', desc: '试验具有有限个等可能结果时，$P(A)=\\dfrac{\\text{事件A包含的基本事件数}}{\\text{基本事件总数}}=\\dfrac{m}{n}$。' },
+      { name: '互斥事件', desc: '不能同时发生的两个事件互斥，此时 $P(A\\cup B)=P(A)+P(B)$；对立事件满足 $P(A)+P(\\bar A)=1$。' },
+      { name: '总体与样本', desc: '考察对象的全体叫总体，每一个对象叫个体，从总体中抽取的一部分叫样本，样本中个体数目叫样本容量。' },
+      { name: '抽样方法', desc: '简单随机抽样（抽签法、随机数法）、系统抽样、分层抽样。' },
+      { name: '样本数据的数字特征', desc: '平均数、中位数、众数描述集中趋势；方差、标准差描述离散（波动）程度。' }
+    ],
+    formulas: [
+      { name: '古典概型', latex: 'P(A)=\\frac{m}{n}' },
+      { name: '互斥事件加法', latex: 'P(A\\cup B)=P(A)+P(B)' },
+      { name: '对立事件', latex: 'P(A)+P(\\bar A)=1' },
+      { name: '平均数', latex: '\\bar x=\\frac{1}{n}(x_1+x_2+\\cdots+x_n)' },
+      { name: '方差', latex: 's^2=\\frac{1}{n}\\sum_{i=1}^{n}(x_i-\\bar x)^2' }
+    ],
+    questions: [
+      {
+        q: '掷一枚均匀骰子一次，出现偶数点的概率是（　）',
+        options: ['$\\dfrac{1}{6}$', '$\\dfrac{1}{3}$', '$\\dfrac{1}{2}$', '$\\dfrac{2}{3}$'], answer: 2,
+        explain: '偶数点有 $2,4,6$ 三种，$P=\\dfrac36=\\dfrac12$。'
+      },
+      {
+        q: '同时抛掷两枚均匀硬币，两枚都正面朝上的概率为（　）',
+        options: ['$\\dfrac{1}{2}$', '$\\dfrac{1}{4}$', '$\\dfrac{1}{3}$', '$\\dfrac{3}{4}$'], answer: 1,
+        explain: '共有（正正、正反、反正、反反）$4$ 种等可能结果，所求为 $\\dfrac14$。'
+      },
+      {
+        q: '数据 $2,4,6$ 的平均数是（　）',
+        options: ['$3$', '$4$', '$5$', '$6$'], answer: 1,
+        explain: '$\\bar x=\\dfrac{2+4+6}{3}=4$。'
+      },
+      {
+        q: '从一副 $52$ 张扑克牌（去掉大小王）中任抽一张，抽到"A"的概率为（　）',
+        options: ['$\\dfrac{1}{52}$', '$\\dfrac{1}{13}$', '$\\dfrac{1}{4}$', '$\\dfrac{1}{2}$'], answer: 1,
+        explain: '"A"有 $4$ 张，$P=\\dfrac{4}{52}=\\dfrac{1}{13}$。'
+      }
+    ]
+  }
+  ];
+
+  /* ==================================================================
+   *  工具函数
+   * ================================================================== */
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  /** HTML 转义（保护公式内的 < > & 等字符） */
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /** KaTeX 渲染容器内所有 $...$ 公式 */
+  const KATEX_OPTS = {
+    delimiters: [
+      { left: '$$', right: '$$', display: true },
+      { left: '\\[', right: '\\]', display: true },
+      { left: '$', right: '$', display: false },
+      { left: '\\(', right: '\\)', display: false }
+    ],
+    throwOnError: false
+  };
+  function typeset(el) {
+    if (window.renderMathInElement) window.renderMathInElement(el, KATEX_OPTS);
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('公式已复制：' + (text.length > 24 ? text.slice(0, 24) + '…' : text));
+    } catch (e) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      showToast('公式已复制');
+    }
+  }
+
+  /* ==================================================================
+   *  壁纸加载（与主页相同的异步生成图轮询逻辑）
+   * ================================================================== */
+  const BG_URL = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+      encodeURIComponent('动漫风格数学主题壁纸，星空下漂浮的几何图形与数学公式，深蓝青色科技感，唯美高清4K') +
+      '&image_size=landscape_16_9';
+  const PLACEHOLDER_SIZE = 1832;
+  function loadBackground() {
+    let tries = 0;
+    const img = document.getElementById('bg-img');
+    function attempt() {
+      const probe = new Image();
+      probe.src = BG_URL + '&_t=' + Date.now();
+      probe.onload = () => {
+        if (probe.naturalWidth === PLACEHOLDER_SIZE && tries < 8) {
+          tries++; setTimeout(attempt, 6000);
+        } else {
+          img.src = probe.src;
+          img.style.display = '';
+          document.getElementById('bg-overlay').classList.remove('loading');
+        }
+      };
+      probe.onerror = () => { if (tries < 8) { tries++; setTimeout(attempt, 6000); } };
+    }
+    attempt();
+  }
+
+  /* ==================================================================
+   *  渲染 8 章内容
+   * ================================================================== */
+  function renderChapters() {
+    const box = document.getElementById('chapters-box');
+
+    box.innerHTML = CHAPTERS.map((c, ci) => `
+      <section id="${c.id}" class="chapter-card glass-card p-4 sm:p-7 mb-5 scroll-mt-20">
+        <!-- 章标题 -->
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="w-10 h-10 rounded-xl bg-cyan-400/10 border border-cyan-300/25 text-cyan-300
+                       flex items-center justify-center text-sm font-bold shrink-0">${c.no}</span>
+          <div class="min-w-0">
+            <h3 class="text-base sm:text-lg font-bold text-slate-100">第${['一','二','三','四','五','六','七','八'][c.no-1]}章　${esc(c.title)}</h3>
+            <p class="text-[11px] text-slate-500 mt-0.5">${c.emoji} ${c.book} · 基础模块</p>
+          </div>
+        </div>
+
+        <!-- ① 核心知识点 -->
+        <h4 class="sec-title"><i class="fa-solid fa-book-open text-cyan-300/80 text-[13px]"></i>本章核心知识点梳理</h4>
+        <ul class="kp-list">
+          ${c.points.map((p, pi) => `
+            <li id="${c.id}-kp-${pi}" class="scroll-mt-24">
+              <span class="text-cyan-200 font-medium">${esc(p.name)}：</span>${esc(p.desc)}
+            </li>`).join('')}
+        </ul>
+
+        <!-- ② 必背公式 -->
+        <h4 class="sec-title"><i class="fa-solid fa-square-root-variable text-cyan-300/80 text-[13px]"></i>必背公式汇总<span class="text-[11px] text-slate-500 font-normal ml-1">（点击卡片复制 LaTeX）</span></h4>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          ${c.formulas.map((f, fi) => `
+            <div class="formula-card" id="${c.id}-f-${fi}" data-latex="${esc(f.latex)}" title="点击复制公式">
+              <p class="text-[11px] text-slate-400 flex items-center justify-between">
+                <span><i class="fa-solid fa-tag text-cyan-300/70 mr-1"></i>${esc(f.name)}</span>
+                <i class="fa-regular fa-copy text-cyan-300/60"></i>
+              </p>
+              <p>$${esc(f.latex)}$</p>
+            </div>`).join('')}
+        </div>
+
+        <!-- ③ 基础练习 -->
+        <h4 class="sec-title"><i class="fa-solid fa-pencil text-cyan-300/80 text-[13px]"></i>本章基础练习题（单选）</h4>
+        ${c.questions.map((q, qi) => `
+          <details class="practice-item" id="${c.id}-q-${qi}">
+            <summary>${qi + 1}. ${esc(q.q)}</summary>
+            <div class="practice-body">
+              ${q.options.map((o, oi) => `<span class="opt">${'ABCD'[oi]}. ${esc(o)}</span>`).join('')}
+              <p class="ans-line">
+                <i class="fa-solid fa-circle-check mr-1"></i>正确答案：${'ABCD'[q.answer]}<br/>
+                <span class="text-slate-300">【解析】</span>${esc(q.explain)}
+              </p>
+            </div>
+          </details>`).join('')}
+      </section>
+    `).join('');
+
+    // 公式渲染（一次性处理全部章节）
+    typeset(box);
+
+    // 公式卡片点击复制
+    box.querySelectorAll('.formula-card').forEach(card => {
+      card.addEventListener('click', () => copyText(card.dataset.latex));
+    });
+  }
+
+  /* ==================================================================
+   *  悬浮目录（桌面侧边 + 移动抽屉）
+   * ================================================================== */
+  function renderSideToc() {
+    document.getElementById('side-toc').innerHTML = CHAPTERS.map(c =>
+      `<a href="#${c.id}" data-target="${c.id}">
+         <span class="toc-label">第${c.no}章 ${c.title}</span><span class="toc-dot"></span>
+       </a>`
+    ).join('');
+  }
+
+  function renderTocSheet() {
+    document.getElementById('toc-sheet').innerHTML =
+      `<p class="text-sm font-semibold text-slate-200 flex items-center gap-2 pb-2">
+         <i class="fa-solid fa-list-ul text-cyan-300"></i>章节目录
+       </p>` +
+      `<p class="toc-book-tag">📕 上册</p>` +
+      CHAPTERS.filter(c => c.book === '上册').map(c =>
+        `<a href="#${c.id}" class="sheet-link"><span class="toc-num">${c.no}</span>${c.title}</a>`
+      ).join('') +
+      `<p class="toc-book-tag">📗 下册</p>` +
+      CHAPTERS.filter(c => c.book === '下册').map(c =>
+        `<a href="#${c.id}" class="sheet-link"><span class="toc-num">${c.no}</span>${c.title}</a>`
+      ).join('');
+
+    // 点击抽屉内链接后关闭抽屉
+    document.getElementById('toc-sheet').querySelectorAll('.sheet-link').forEach(a => {
+      a.addEventListener('click', () => setTimeout(closeTocSheet, 80));
+    });
+  }
+
+  function openTocSheet() {
+    document.getElementById('toc-mask').classList.add('show');
+    document.getElementById('toc-sheet').classList.add('show');
+  }
+  function closeTocSheet() {
+    document.getElementById('toc-mask').classList.remove('show');
+    document.getElementById('toc-sheet').classList.remove('show');
+  }
+
+  function initToc() {
+    renderSideToc();
+    renderTocSheet();
+    document.getElementById('toc-fab').addEventListener('click', openTocSheet);
+    document.getElementById('toc-mask').addEventListener('click', closeTocSheet);
+
+    // 滚动高亮当前章节（桌面侧边目录）
+    const links = document.querySelectorAll('#side-toc a');
+    const setActive = (id) => links.forEach(a =>
+      a.classList.toggle('active', a.dataset.target === id));
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(en => { if (en.isIntersecting) setActive(en.target.id); });
+    }, { rootMargin: '-20% 0px -65% 0px', threshold: 0 });
+    CHAPTERS.forEach(c => {
+      const el = document.getElementById(c.id);
+      if (el) observer.observe(el);
+    });
+  }
+
+  /* ==================================================================
+   *  搜索知识点 / 公式
+   * ================================================================== */
+  function initSearch() {
+    const input = document.getElementById('search-input');
+    const panel = document.getElementById('search-results');
+    const clearBtn = document.getElementById('search-clear');
+
+    /** 跳转到指定元素并闪烁高亮 */
+    function jump(targetSel) {
+      const el = document.querySelector(targetSel);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // 章节内可能是折叠的练习（搜索不覆盖练习），这里只高亮公式/知识点
+      if (el.classList.contains('formula-card')) {
+        el.classList.add('flash');
+        setTimeout(() => el.classList.remove('flash'), 1600);
+      } else {
+        el.classList.add('flash-kp');
+        setTimeout(() => el.classList.remove('flash-kp'), 1600);
+      }
+    }
+
+    input.addEventListener('input', () => {
+      const kw = input.value.trim().toLowerCase();
+      clearBtn.classList.toggle('hidden', !kw);
+      if (!kw) { panel.style.display = 'none'; panel.innerHTML = ''; return; }
+
+      const hits = [];
+      CHAPTERS.forEach(c => {
+        c.points.forEach((p, pi) => {
+          if (p.name.toLowerCase().includes(kw) || p.desc.toLowerCase().includes(kw) ||
+              p.name.includes(input.value.trim()) || p.desc.includes(input.value.trim())) {
+            hits.push({ type: '知识点', ch: c.no + '·' + c.title, text: p.name, target: '#' + c.id + '-kp-' + pi });
+          }
+        });
+        c.formulas.forEach((f, fi) => {
+          if (f.name.toLowerCase().includes(kw) || f.latex.toLowerCase().includes(kw) ||
+              f.name.includes(input.value.trim())) {
+            hits.push({ type: '公式', ch: c.no + '·' + c.title, text: f.name + '：' + f.latex, target: '#' + c.id + '-f-' + fi });
+          }
+        });
+      });
+
+      if (!hits.length) {
+        panel.innerHTML = '<p class="sr-empty">没有找到相关知识点 / 公式，换个关键词试试～</p>';
+      } else {
+        panel.innerHTML = hits.slice(0, 20).map(h =>
+          `<a href="${h.target}" data-jump="${h.target}">
+             <span class="sr-type">${h.type}</span>${esc(h.text)}
+             <span class="sr-ch block mt-0.5">第 ${esc(h.ch)}</span>
+           </a>`
+        ).join('') + (hits.length > 20 ? `<p class="sr-empty">还有 ${hits.length - 20} 条结果，请细化关键词</p>` : '');
+
+        panel.querySelectorAll('a').forEach(a => {
+          a.addEventListener('click', (e) => {
+            e.preventDefault();
+            jump(a.dataset.jump);
+            panel.style.display = 'none';
+          });
+        });
+      }
+      panel.style.display = 'block';
+    });
+
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      panel.style.display = 'none';
+      panel.innerHTML = '';
+      clearBtn.classList.add('hidden');
+      input.focus();
+    });
+
+    // 点击页面空白处收起结果
+    document.addEventListener('click', (e) => {
+      if (!panel.contains(e.target) && e.target !== input) panel.style.display = 'none';
+    });
+  }
+
+  /* ==================================================================
+   *  底部刷题板块
+   * ================================================================== */
+  const quizState = { chId: '', questions: [], graded: false };
+
+  function renderQuizChips() {
+    const chips = document.getElementById('quiz-chips');
+    const list = [{ id: 'all', label: '综合练习（全部 8 章）' },
+      ...CHAPTERS.map(c => ({ id: c.id, label: '第' + c.no + '章 ' + c.title }))];
+
+    chips.innerHTML = list.map(x =>
+      `<button class="quiz-chip" data-ch="${x.id}">${x.label}</button>`
+    ).join('');
+    chips.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => loadQuiz(b.dataset.ch));
+    });
+  }
+
+  function loadQuiz(chId) {
+    quizState.chId = chId;
+    quizState.graded = false;
+
+    document.querySelectorAll('#quiz-chips .quiz-chip').forEach(b =>
+      b.classList.toggle('active', b.dataset.ch === chId));
+    document.getElementById('quiz-empty').classList.add('hidden');
+    document.getElementById('quiz-actions').classList.remove('hidden');
+
+    const scoreBox = document.getElementById('quiz-score');
+    scoreBox.classList.add('hidden');
+
+    // 综合练习取全部题，单章取该章题
+    quizState.questions = chId === 'all'
+      ? CHAPTERS.flatMap(c => c.questions.map(q => ({ ...q, chName: c.title })))
+      : CHAPTERS.find(c => c.id === chId).questions.map(q => ({ ...q, chName: '' }));
+
+    const box = document.getElementById('quiz-questions');
+    box.innerHTML = quizState.questions.map((q, i) => `
+      <div class="quiz-q" id="qq-${i}">
+        <p class="text-[13.5px] text-slate-200 leading-relaxed">
+          ${chId === 'all' ? `<span class="text-[10.5px] tag-badge px-1.5 py-0.5 rounded-full mr-1.5">${esc(q.chName)}</span>` : ''}
+          ${i + 1}. ${esc(q.q)}
+        </p>
+        <div class="mt-1.5">
+          ${q.options.map((o, oi) => `
+            <label class="quiz-opt">
+              <input type="radio" name="quiz-${i}" value="${oi}" />
+              <span>${'ABCD'[oi]}. ${esc(o)}</span>
+            </label>`).join('')}
+        </div>
+        <div class="quiz-result-area"></div>
+      </div>
+    `).join('');
+    typeset(box);
+
+    document.getElementById('quiz').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function gradeQuiz() {
+    if (quizState.graded) return;
+
+    let answered = 0, correct = 0;
+
+    quizState.questions.forEach((q, i) => {
+      const block = document.getElementById('qq-' + i);
+      const picked = block.querySelector(`input[name="quiz-${i}"]:checked`);
+      const userVal = picked ? Number(picked.value) : -1;
+      if (picked) answered++;
+
+      const isRight = userVal === q.answer;
+      if (isRight) correct++;
+
+      block.classList.add(isRight ? 'correct' : 'wrong');
+
+      // 标记选项颜色
+      block.querySelectorAll('.quiz-opt').forEach((label, oi) => {
+        const input = label.querySelector('input');
+        input.disabled = true;
+        if (oi === q.answer) label.classList.add('pick-right');
+        if (oi === userVal && !isRight) label.classList.add('pick-wrong');
+      });
+
+      // 显示答案解析
+      const area = block.querySelector('.quiz-result-area');
+      area.innerHTML = `
+        <div class="quiz-explain">
+          <i class="fa-solid ${isRight ? 'fa-circle-check text-emerald-300' : 'fa-circle-xmark text-rose-300'} mr-1"></i>
+          ${!picked ? '本题未作答，' : (isRight ? '回答正确！' : '回答错误，')}
+          正确答案：<span class="text-emerald-300 font-semibold">${'ABCD'[q.answer]}</span><br/>
+          <span class="text-slate-300">【解析】</span>${esc(q.explain)}
+        </div>`;
+    });
+
+    typeset(document.getElementById('quiz-questions'));
+
+    // 计分
+    const total = quizState.questions.length;
+    const score = Math.round(correct / total * 100);
+    const scoreBox = document.getElementById('quiz-score');
+    let msg = '';
+    if (score >= 90)      msg = '优秀！基础非常扎实 🌟';
+    else if (score >= 75) msg = '不错，继续保持 ✨';
+    else if (score >= 60) msg = '及格，错题记得复盘哦 📖';
+    else                  msg = '别灰心，回到上面的知识点再看一遍 💪';
+
+    scoreBox.className = 'mt-4 rounded-xl px-4 py-3.5 text-center border ' +
+      (score >= 60 ? 'border-emerald-300/30 bg-emerald-400/10 text-emerald-200'
+                   : 'border-rose-300/30 bg-rose-400/10 text-rose-200');
+    scoreBox.innerHTML =
+      `<p class="text-sm font-semibold">得分：<span class="text-xl">${score}</span> 分</p>
+       <p class="text-[12px] mt-1">答对 ${correct} / ${total} 题${answered < total ? `，有 ${total - answered} 题未作答` : ''}　${msg}</p>`;
+    scoreBox.classList.remove('hidden');
+
+    document.getElementById('quiz-submit').classList.add('hidden');
+    quizState.graded = true;
+  }
+
+  function resetQuiz() {
+    document.getElementById('quiz-submit').classList.remove('hidden');
+    loadQuiz(quizState.chId);
+  }
+
+  function changeChapter() {
+    document.getElementById('quiz-actions').classList.add('hidden');
+    document.getElementById('quiz-empty').classList.remove('hidden');
+    document.getElementById('quiz-questions').innerHTML = '';
+    document.getElementById('quiz-score').classList.add('hidden');
+    document.querySelectorAll('#quiz-chips .quiz-chip').forEach(b =>
+      b.classList.remove('active'));
+    quizState.chId = '';
+    document.getElementById('quiz').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function initQuiz() {
+    renderQuizChips();
+    document.getElementById('quiz-submit').addEventListener('click', gradeQuiz);
+    document.getElementById('quiz-retry').addEventListener('click', resetQuiz);
+    document.getElementById('quiz-change').addEventListener('click', changeChapter);
+  }
+
+  /* ==================================================================
+   *  初始化
+   * ================================================================== */
+  function init() {
+    loadBackground();
+    renderChapters();
+    initToc();
+    initSearch();
+    initQuiz();
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  }
+
+  init();
+  </script>
+</body>
+</html>

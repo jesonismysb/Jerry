@@ -523,6 +523,14 @@
         '- 「让营地比你来时更干净。」—— 童子军军规，每次提交顺手改进一点。',
         '整本书翻下来就一个感受：整洁不是审美洁癖，而是团队协作的礼貌。'
       ]
+    },
+    {
+      id: 9,
+      url: './math.html',   // 外链专题页：点击卡片直接跳转
+      title: '中职数学（基础模块上下册）全套知识点&公式&习题',
+      date: '2026-10-05', tags: ['数学', '学习'], minutes: 15,
+      excerpt: '按「十四五」教材目录整理 8 章：知识点梳理、必背公式（点击复制）与单选练习，支持 LaTeX 渲染、搜索与在线刷题自动批改。',
+      content: []
     }
   ];
 
@@ -690,7 +698,7 @@
       <article data-id="${a.id}"
                class="article-card glass-card p-5 cursor-pointer"
                style="animation-delay:${i * 0.06}s">
-        <h3 class="font-bold text-[15px] leading-snug t-main group-hover:text-cyan-200">${a.title}</h3>
+        <h3 class="font-bold text-[15px] leading-snug t-main group-hover:text-cyan-200">${a.title}${a.url ? '<i class="fa-solid fa-arrow-up-right-from-square text-[10.5px] text-cyan-300/70 ml-1.5" title="专题页面"></i>' : ''}</h3>
         <p class="clamp-2 text-sm mt-2 leading-relaxed" style="color:var(--c-sub)">${a.excerpt}</p>
         <div class="flex items-center justify-between mt-4 text-xs" style="color:var(--c-sub)">
           <div class="flex gap-1.5 flex-wrap">
@@ -701,9 +709,13 @@
       </article>
     `).join('');
 
-    // 点击卡片打开详情
+    // 点击卡片：外链专题直接跳转，普通文章打开详情
     box.querySelectorAll('article').forEach(el => {
-      el.addEventListener('click', () => openArticle(Number(el.dataset.id)));
+      el.addEventListener('click', () => {
+        const a = ARTICLES.find(x => x.id === Number(el.dataset.id));
+        if (a && a.url) { window.location.href = a.url; return; }
+        openArticle(Number(el.dataset.id));
+      });
     });
   }
 
