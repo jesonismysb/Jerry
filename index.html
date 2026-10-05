@@ -343,30 +343,30 @@
   ];
 
   /* ==================================================================
-   *  IP 属地接口列表（按顺序轮询，任一成功取出 ip；全部失败则合并提示）
+   *  IP 属地接口列表（按精度优先级顺序轮询，任一成功取出真实出口 IP）
    *  均为免费、支持 HTTPS 与跨域(CORS: Access-Control-Allow-Origin)的公开接口
-   *  前 5 个返回地理信息，第 6 个 ipify 仅返回 IP 作最终兜底
+   *  ①② 国内库对中国地级市精度更高；③④⑤ 全球库；⑥ ipify 纯 IP 最终兜底
    * ================================================================== */
   const IP_APIS = [
-    { // ① 百度千帆免费接口
+    { // ① 百度千帆：国内 IP 库，省/市精度高
       url: 'https://qifu-api.baidubce.com/ip/local/geo/v1/district',
       parse: (d) => d && d.data ? { prov: d.data.prov, city: d.data.city, ip: d.data.ip } : null
     },
-    { // ② vore 免费接口
+    { // ② vore：聚合国内数据源，含真实出口 IP 与省市
       url: 'https://api.vore.top/api/IPdata',
       parse: (d) => d && d.ipinfo ? { prov: d.ipinfo.prov, city: d.ipinfo.city, ip: d.ipinfo.cip } : null
     },
-    { // ③ ipwho.is：免 Key、CORS 开放、含省市与 IP
+    { // ③ ipwho.is：全球库，免 Key、CORS 开放，城市级
       url: 'https://ipwho.is/',
       parse: (d) => d && d.success !== false ? { prov: d.region, city: d.city, ip: d.ip } : null
     },
-    { // ④ UserAgentInfo 接口
+    { // ④ GeoJS：CORS/HTTPS 开放，全球库，限流宽松
+      url: 'https://get.geojs.io/v1/ip/geo.json',
+      parse: (d) => d && d.ip ? { prov: d.region, city: d.city, ip: d.ip } : null
+    },
+    { // ⑤ UserAgentInfo：全球库补充
       url: 'https://ip.useragentinfo.com/json',
       parse: (d) => d ? { prov: d.province, city: d.city, ip: d.ip } : null
-    },
-    { // ⑤ ipapi.co 兜底（海外，可能为英文地名）
-      url: 'https://ipapi.co/json/',
-      parse: (d) => d && d.country ? { prov: d.region, city: d.city, ip: d.ip } : null
     },
     { // ⑥ ipify：CORS 开放、仅返回 {ip}，纯 IP 最终兜底
       url: 'https://api.ipify.org?format=json',
@@ -468,12 +468,30 @@
   /* ================================================================== */
   let visitorLocation = { prov: '', city: '', text: '未知地区' };
 
-  /** 回填访客公网 IP；ip 为空时展示友好失败文案 */
+  /**
+   * IP 脱敏：只保留前两段，其余用 x 代替
+   *   IPv4: 120.230.45.67  → 120.230.x.x
+   *   IPv6: 240e:0310:abcd::1 → 240e:0310:x:x:x:x:x:x
+   */
+  function maskIP(ip) {
+    const s = String(ip).trim();
+    if (/^\d{1,3}(\.\d{1,3}){3}$/.test(s)) {
+      const p = s.split('.');
+      return p[0] + '.' + p[1] + '.x.x';
+    }
+    if (s.includes(':')) {
+      const p = s.split(':');
+      return (p[0] || '0') + ':' + (p[1] || '0') + ':x:x:x:x:x:x';
+    }
+    return s;   // 非标准格式原样返回，不做猜测
+  }
+
+  /** 回填访客公网 IP（脱敏展示）；ip 为空时展示友好失败文案 */
   function setVisitorIP(ip) {
     const el = document.getElementById('visitor-ip');
     el.classList.remove('ip-loading');
     if (ip) {
-      el.textContent = ip;
+      el.textContent = maskIP(ip);
     } else {
       el.textContent = 'IP获取失败';
       el.classList.add('text-slate-500');
