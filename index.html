@@ -463,9 +463,48 @@
     attempt();
   }
 
-  /* ================================================================== */
-  /*  模块一：访客 IP 属地                                                */
-  /* ================================================================== */
+  /* ==================================================================
+   *  模块一：访客 IP 属地
+   *  英文/拼音地名 → 中文映射表（省、直辖市、主要城市）
+   *  key 一律小写、忽略空格；不在表内的地名保持原样显示
+   * ================================================================== */
+  const CITY_CN_MAP = {
+    // 直辖市 / 特别行政区
+    beijing: '北京', shanghai: '上海', tianjin: '天津', chongqing: '重庆',
+    'hong kong': '香港', macau: '澳门', hongkong: '香港',
+    // 省 / 自治区
+    guangdong: '广东', zhejiang: '浙江', jiangsu: '江苏', shandong: '山东',
+    henan: '河南', sichuan: '四川', hubei: '湖北', hunan: '湖南',
+    hebei: '河北', fujian: '福建', anhui: '安徽', jiangxi: '江西',
+    liaoning: '辽宁', shaanxi: '陕西', guangxi: '广西', yunnan: '云南',
+    shanxi: '山西', guizhou: '贵州', heilongjiang: '黑龙江', jilin: '吉林',
+    gansu: '甘肃', hainan: '海南', ningxia: '宁夏', qinghai: '青海',
+    'inner mongolia': '内蒙古', 'nei mongol': '内蒙古',
+    xinjiang: '新疆', tibet: '西藏', xizang: '西藏', taiwan: '台湾',
+    // 主要城市（省会及计划单列市/重点地级市）
+    guangzhou: '广州', shenzhen: '深圳', hangzhou: '杭州', nanjing: '南京',
+    chengdu: '成都', wuhan: '武汉', 'xi’an': '西安', "xi'an": '西安', xian: '西安',
+    suzhou: '苏州', zhengzhou: '郑州', changsha: '长沙', shenyang: '沈阳',
+    qingdao: '青岛', dalian: '大连', xiamen: '厦门', ningbo: '宁波',
+    fuzhou: '福州', hefei: '合肥', kunming: '昆明', harbin: '哈尔滨',
+    jinan: '济南', taiyuan: '太原', nanchang: '南昌', nanning: '南宁',
+    guiyang: '贵阳', lanzhou: '兰州', wuxi: '无锡', changzhou: '常州',
+    foshan: '佛山', dongguan: '东莞', zhuhai: '珠海', zhongshan: '中山',
+    wenzhou: '温州', sanya: '三亚', haikou: '海口', shijiazhuang: '石家庄',
+    changchun: '长春', urumqi: '乌鲁木齐', hohhot: '呼和浩特', lhasa: '拉萨',
+    xining: '西宁', yinchuan: '银川', quanzhou: '泉州', nantong: '南通',
+    xuzhou: '徐州', tangshan: '唐山', luoyang: '洛阳', shaoxing: '绍兴',
+    jiaxing: '嘉兴', yantai: '烟台', weifang: '潍坊'
+  };
+
+  /** 地名转中文：已是中文或不在映射表内时，返回原始名称 */
+  function toChineseRegion(name) {
+    const s = String(name == null ? '' : name).trim();
+    if (!s) return '';
+    if (/[\u4e00-\u9fa5]/.test(s)) return s;            // 已含中文，直接使用
+    return CITY_CN_MAP[s.toLowerCase()] || s;
+  }
+
   let visitorLocation = { prov: '', city: '', text: '未知地区' };
 
   /**
@@ -510,6 +549,11 @@
       try {
         const data = await fetchJSON(api.url);
         const loc = api.parse(data);
+        if (loc) {
+          // 统一在数据出口把英文/拼音地名转中文；已是中文或无映射则保持原值
+          if (loc.prov) loc.prov = toChineseRegion(loc.prov);
+          if (loc.city) loc.city = toChineseRegion(loc.city);
+        }
         if (loc && (loc.prov || loc.city || loc.ip)) {
           if (!regionReady && (loc.prov || loc.city)) {
             // 直辖市等情况省市同名时只显示一次
