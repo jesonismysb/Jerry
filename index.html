@@ -98,6 +98,10 @@
     }
     @keyframes pulse { 0%,100%{opacity:.4;} 50%{opacity:1;} }
 
+    /* ==================== IP 获取中的柔和呼吸动画 ==================== */
+    .ip-loading { animation: ipPulse 1.6s ease-in-out infinite; }
+    @keyframes ipPulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
+
     /* 壁纸尚未生成完成（占位图）时加深遮罩，避免占位文字透出影响观感 */
     #bg-overlay { transition: opacity .8s ease; }
     #bg-overlay.loading {
@@ -160,6 +164,10 @@
               <span class="pulse-dot"></span>定位中…
             </span>
             的用户访问本站
+          </p>
+          <p class="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-x-1">
+            你的IP地址：<span id="visitor-ip"
+                  class="font-mono tabular-nums text-cyan-200/90 ip-loading">获取IP中...</span>
           </p>
           <p class="text-xs text-slate-400 mt-1">愿你在这里有所收获 ✨</p>
         </div>
@@ -448,25 +456,47 @@
   /* ================================================================== */
   let visitorLocation = { prov: '', city: '', text: '未知地区' };
 
+  /** 回填访客公网 IP；ip 为空时展示友好失败文案 */
+  function setVisitorIP(ip) {
+    const el = document.getElementById('visitor-ip');
+    el.classList.remove('ip-loading');
+    if (ip) {
+      el.textContent = ip;
+    } else {
+      el.textContent = 'IP获取失败';
+      el.classList.add('text-slate-500');
+    }
+  }
+
   async function initVisitorLocation() {
     const welcomeEl = document.getElementById('welcome-region');
     const cityEl = document.getElementById('clock-city');
+
+    // 属地与 IP 独立处理：首个成功的属地立即渲染；
+    // 若该接口未返回 IP，则继续尝试后续接口，尽量拿到公网 IP
+    let regionReady = false;
 
     for (const api of IP_APIS) {
       try {
         const data = await fetchJSON(api.url);
         const loc = api.parse(data);
-        if (loc && (loc.prov || loc.city)) {
-          // 直辖市等情况省市同名时只显示一次
-          let text = [loc.prov, loc.city].filter(Boolean).join(' ');
-          if (loc.prov && loc.city && (loc.prov.includes(loc.city) || loc.city.includes(loc.prov))) {
-            text = loc.prov;
-          }
-          visitorLocation = { prov: loc.prov || '', city: loc.city || '', text };
+        if (loc && (loc.prov || loc.city || loc.ip)) {
+          if (!regionReady && (loc.prov || loc.city)) {
+            // 直辖市等情况省市同名时只显示一次
+            let text = [loc.prov, loc.city].filter(Boolean).join(' ');
+            if (loc.prov && loc.city && (loc.prov.includes(loc.city) || loc.city.includes(loc.prov))) {
+              text = loc.prov;
+            }
+            visitorLocation = { prov: loc.prov || '', city: loc.city || '', text };
 
-          welcomeEl.innerHTML = '<i class="fa-solid fa-location-dot text-cyan-400 mr-1"></i>' + text;
-          cityEl.textContent = loc.city || loc.prov || '未知';
-          return;
+            welcomeEl.innerHTML = '<i class="fa-solid fa-location-dot text-cyan-400 mr-1"></i>' + text;
+            cityEl.textContent = loc.city || loc.prov || '未知';
+            regionReady = true;
+          }
+          if (loc.ip) {
+            setVisitorIP(loc.ip);   // 拿到公网 IP，异步二次回填
+            return;
+          }
         }
       } catch (err) {
         // 当前接口失败，自动尝试下一个
@@ -474,8 +504,11 @@
       }
     }
     // 全部接口失败时的兜底展示
-    welcomeEl.innerHTML = '<i class="fa-solid fa-circle-question text-slate-400 mr-1"></i>未知地区';
-    cityEl.textContent = '未知';
+    if (!regionReady) {
+      welcomeEl.innerHTML = '<i class="fa-solid fa-circle-question text-slate-400 mr-1"></i>未知地区';
+      cityEl.textContent = '未知';
+    }
+    setVisitorIP(null);
   }
 
   /* ================================================================== */
