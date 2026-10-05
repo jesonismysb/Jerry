@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端自适应视口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="奈良的工具库 - JSON格式化、时间戳转换、Base64、URL编解码、密码生成、二维码生成" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>工具库 · 奈良</title>
+
+  <!-- 网页小图标（与主页一致的内联 SVG） -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 方式，无需构建） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <!-- qrcodejs：纯前端二维码生成（无后端） -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script>
+    /* Tailwind 自定义配置（与主页一致） */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#67e8f9' }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ==================== 全局基础样式 ==================== */
+    html, body { height: 100%; }
+    html, body { overflow-x: hidden; }   /* 移动端兜底，杜绝意外横向滚动 */
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* ==================== 毛玻璃卡片（与主页同一套参数） ==================== */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+    /* 工具面板不参与 hover 上浮，保持操作稳定 */
+    .panel-card, .panel-card:hover { transform: none; }
+
+    /* ==================== 工具输入区（文本域/输入框） ==================== */
+    .tool-area {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      color: #e2e8f0;
+      border-radius: .8rem;
+      padding: .75rem .9rem;
+      font-size: 13.5px;
+      line-height: 1.7;
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .tool-area::placeholder { color: #64748b; }
+    .tool-area:focus {
+      outline: none;
+      border-color: rgba(103, 232, 249, 0.45);
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+    }
+    .tool-area.mono { font-family: Consolas, Monaco, "Courier New", monospace; }
+
+    /* 次级小按钮（描边胶囊） */
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+      font-size: 12.5px; color: #cbd5e1;
+      padding: .45rem .9rem; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      transition: all .25s ease;
+      cursor: pointer;
+    }
+    .btn-ghost:hover { color: #67e8f9; border-color: rgba(103, 232, 249, 0.4); background: rgba(103, 232, 249, 0.08); }
+    /* 主按钮（青色渐变，与求签页按钮同一风格） */
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+      font-size: 13px; font-weight: 500; color: #ecfeff;
+      padding: .5rem 1.15rem; border-radius: 999px;
+      background: linear-gradient(to right, rgba(8,145,178,.85), rgba(14,165,233,.85));
+      border: 1px solid rgba(103, 232, 249, 0.4);
+      box-shadow: 0 6px 20px rgba(8, 145, 178, .25);
+      transition: all .25s ease;
+      cursor: pointer;
+    }
+    .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 6px 24px rgba(103,232,249,.35); }
+    .btn-primary:active { transform: scale(.97); }
+
+    /* 小节标题 */
+    .tool-label {
+      display: flex; align-items: center; gap: .45rem;
+      font-size: 12.5px; color: #94a3b8; margin-bottom: .45rem;
+    }
+    .tool-label i { color: rgba(103, 232, 249, .75); }
+
+    /* 状态提示行 */
+    .tip-line { font-size: 12.5px; min-height: 1.2rem; }
+    .tip-ok  { color: #5eead4; }
+    .tip-err { color: #fda4af; }
+
+    /* ==================== 入场动画（与主页一致） ==================== */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    main > * { animation: fadeUp .7s ease both; }
+    main > *:nth-child(1) { animation-delay: .05s; }
+    main > *:nth-child(2) { animation-delay: .12s; }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .entry-card { animation: cardIn .5s ease both; }
+
+    /* ==================== Toast 提示 ==================== */
+    #toast {
+      position: fixed; left: 50%;
+      bottom: calc(32px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.92);
+      color: #ecfeff; font-size: 14px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .35);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 99; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* ==================== 全面屏安全区 & 触控热区 ==================== */
+    /* 页脚避开 iPhone 底部手势条 */
+    #page-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+    /* 长度滑块：加大纵向触控热区，手机上更好点按 */
+    #pw-len { display: block; width: 100%; padding: 10px 0; margin: -10px 0; }
+
+    /* 壁纸加载占位时加深遮罩 */
+    #bg-overlay { transition: opacity .8s ease; }
+    #bg-overlay.loading {
+      background: linear-gradient(180deg, rgba(2,6,23,.97) 0%, rgba(2,6,23,.92) 50%, rgba(2,6,23,.98) 100%) !important;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <!-- ================================================================ -->
+  <!-- 背景层：动漫壁纸 + 遮罩（与主页同一张壁纸地址）                    -->
+  <!-- ================================================================ -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <div id="bg-overlay" class="absolute inset-0 loading"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- 顶部导航栏：返回首页 + 页面标题                                    -->
+  <!-- ================================================================ -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+      <!-- ① 返回导航主页 -->
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-toolbox text-cyan-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">奈良 · 工具库</h1>
+      </div>
+      <div class="min-w-[86px]"></div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- ============================================================ -->
+    <!-- 视图一：工具入口卡片网格                                        -->
+    <!-- ============================================================ -->
+    <div id="view-grid">
+      <h2 class="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2 px-1">
+        <span class="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-300 to-sky-500"></span>
+        选择一个在线小工具
+      </h2>
+      <div id="tool-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <!-- 工具入口卡片由 JS 动态生成 -->
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- 视图二：具体工具面板（每次只显示一个）                           -->
+    <!-- ============================================================ -->
+    <div id="view-tool" class="hidden">
+      <!-- 返回工具列表 -->
+      <button id="btn-back-grid"
+              class="text-sm text-slate-300 hover:text-cyan-300 inline-flex items-center gap-2 mb-4 transition-colors">
+        <i class="fa-solid fa-arrow-left-long"></i> 返回工具列表
+      </button>
+
+      <!-- ========== 工具 1：JSON 格式化 & 压缩 ========== -->
+      <section id="tool-json" class="tool-panel glass-card panel-card p-4 sm:p-7">
+        <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2 t-main">
+          <i class="fa-solid fa-code text-cyan-300"></i> JSON 格式化 / 压缩
+        </h3>
+        <div class="mt-5">
+          <p class="tool-label"><i class="fa-solid fa-arrow-turn-down"></i>输入 JSON</p>
+          <textarea id="json-in" rows="7" spellcheck="false"
+                    class="tool-area mono" placeholder='{"name":"奈良","site":"personal-nav"}'></textarea>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <button class="btn-primary" id="json-btn-format"><i class="fa-solid fa-wand-magic-sparkles"></i>格式化</button>
+          <button class="btn-ghost" id="json-btn-minify"><i class="fa-solid fa-minimize"></i>压缩</button>
+          <button class="btn-ghost" id="json-btn-copy"><i class="fa-regular fa-copy"></i>复制结果</button>
+          <button class="btn-ghost" id="json-btn-clear"><i class="fa-solid fa-eraser"></i>清空</button>
+        </div>
+        <p id="json-tip" class="tip-line mt-3"></p>
+        <div class="mt-2">
+          <p class="tool-label"><i class="fa-solid fa-arrow-turn-up"></i>处理结果</p>
+          <textarea id="json-out" rows="7" spellcheck="false" readonly
+                    class="tool-area mono" placeholder="处理结果将显示在这里…"></textarea>
+        </div>
+      </section>
+
+      <!-- ========== 工具 2：时间戳 ⇄ 日期 ========== -->
+      <section id="tool-time" class="tool-panel glass-card panel-card p-5 sm:p-7 hidden">
+        <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2 t-main">
+          <i class="fa-solid fa-clock text-cyan-300"></i> 时间戳 ⇄ 日期
+        </h3>
+
+        <!-- 当前时间戳 -->
+        <div class="mt-5 rounded-xl border border-white/10 bg-white/5 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
+          <span class="text-xs text-slate-400"><i class="fa-solid fa-stopwatch text-cyan-300/80 mr-1.5"></i>当前 Unix 时间戳</span>
+          <span id="ts-now" class="font-mono text-cyan-200 text-sm tabular-nums">--</span>
+        </div>
+
+        <!-- 时间戳 → 日期 -->
+        <div class="mt-6">
+          <p class="tool-label"><i class="fa-solid fa-right-left"></i>时间戳 → 日期（自动识别秒/毫秒）</p>
+          <div class="flex gap-2">
+            <input id="ts-in" type="text" class="tool-area mono flex-1" placeholder="例如：1759622400" />
+            <button id="ts-now-fill" class="btn-ghost shrink-0" title="填入当前时间戳"><i class="fa-solid fa-stopwatch"></i></button>
+          </div>
+          <button id="ts-btn-convert" class="btn-primary mt-3"><i class="fa-solid fa-wand-magic-sparkles"></i>转换为日期</button>
+          <p id="ts-result" class="tip-line mt-2 font-mono"></p>
+        </div>
+
+        <!-- 日期 → 时间戳 -->
+        <div class="mt-6">
+          <p class="tool-label"><i class="fa-solid fa-right-left fa-flip"></i>日期 → 时间戳</p>
+          <input id="date-in" type="datetime-local" step="1" class="tool-area" />
+          <button id="date-btn-convert" class="btn-primary mt-3"><i class="fa-solid fa-wand-magic-sparkles"></i>转换为时间戳</button>
+          <p id="date-result" class="tip-line mt-2 font-mono"></p>
+        </div>
+      </section>
+
+      <!-- ========== 工具 3：Base64 编码 / 解码 ========== -->
+      <section id="tool-base64" class="tool-panel glass-card panel-card p-5 sm:p-7 hidden">
+        <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2 t-main">
+          <i class="fa-solid fa-shield-halved text-cyan-300"></i> Base64 编码 / 解码
+        </h3>
+        <div class="mt-5">
+          <p class="tool-label"><i class="fa-solid fa-arrow-turn-down"></i>输入文本（支持中文 UTF-8）</p>
+          <textarea id="b64-in" rows="6" spellcheck="false"
+                    class="tool-area mono" placeholder="输入要编码或解码的内容…"></textarea>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <button class="btn-primary" id="b64-btn-enc"><i class="fa-solid fa-lock"></i>编码</button>
+          <button class="btn-ghost" id="b64-btn-dec"><i class="fa-solid fa-lock-open"></i>解码</button>
+          <button class="btn-ghost" id="b64-btn-copy"><i class="fa-regular fa-copy"></i>复制结果</button>
+          <button class="btn-ghost" id="b64-btn-clear"><i class="fa-solid fa-eraser"></i>清空</button>
+        </div>
+        <p id="b64-tip" class="tip-line mt-3"></p>
+        <div class="mt-2">
+          <p class="tool-label"><i class="fa-solid fa-arrow-turn-up"></i>处理结果</p>
+          <textarea id="b64-out" rows="6" spellcheck="false" readonly
+                    class="tool-area mono" placeholder="处理结果将显示在这里…"></textarea>
+        </div>
+      </section>
+
+      <!-- ========== 工具 4：URL 编码 / 解码 ========== -->
+      <section id="tool-url" class="tool-panel glass-card panel-card p-5 sm:p-7 hidden">
+        <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2 t-main">
+          <i class="fa-solid fa-link text-cyan-300"></i> URL 编码 / 解码
+        </h3>
+        <div class="mt-5">
+          <p class="tool-label"><i class="fa-solid fa-arrow-turn-down"></i>输入 URL 或文本</p>
+          <textarea id="url-in" rows="5" spellcheck="false"
+                    class="tool-area mono" placeholder="https://example.com/?q=奈良&a=1"></textarea>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <button class="btn-primary" id="url-btn-enc"><i class="fa-solid fa-lock"></i>编码</button>
+          <button class="btn-ghost" id="url-btn-dec"><i class="fa-solid fa-lock-open"></i>解码</button>
+          <button class="btn-ghost" id="url-btn-copy"><i class="fa-regular fa-copy"></i>复制结果</button>
+          <button class="btn-ghost" id="url-btn-clear"><i class="fa-solid fa-eraser"></i>清空</button>
+        </div>
+        <p id="url-tip" class="tip-line mt-3"></p>
+        <div class="mt-2">
+          <p class="tool-label"><i class="fa-solid fa-arrow-turn-up"></i>处理结果</p>
+          <textarea id="url-out" rows="5" spellcheck="false" readonly
+                    class="tool-area mono" placeholder="处理结果将显示在这里…"></textarea>
+        </div>
+      </section>
+
+      <!-- ========== 工具 5：随机密码生成器 ========== -->
+      <section id="tool-password" class="tool-panel glass-card panel-card p-5 sm:p-7 hidden">
+        <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2 t-main">
+          <i class="fa-solid fa-key text-cyan-300"></i> 随机密码生成器
+        </h3>
+
+        <!-- 长度设置 -->
+        <div class="mt-5">
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+            <span><i class="fa-solid fa-ruler text-cyan-300/80 mr-1.5"></i>密码长度</span>
+            <span id="pw-len-val" class="font-mono text-cyan-200">16</span>
+          </div>
+          <input id="pw-len" type="range" min="4" max="64" value="16" class="w-full accent-cyan-400" />
+        </div>
+
+        <!-- 字符集选项 -->
+        <div class="grid grid-cols-2 gap-2 mt-5 text-[11px] sm:text-xs">
+          <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-white/10 bg-white/5 px-2.5 sm:px-3 py-2.5">
+            <input type="checkbox" id="pw-lower" checked class="accent-cyan-400 w-4 h-4" />
+            <span>小写字母 <span class="text-slate-500 font-mono">a-z</span></span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-white/10 bg-white/5 px-2.5 sm:px-3 py-2.5">
+            <input type="checkbox" id="pw-upper" checked class="accent-cyan-400 w-4 h-4" />
+            <span>大写字母 <span class="text-slate-500 font-mono">A-Z</span></span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-white/10 bg-white/5 px-2.5 sm:px-3 py-2.5">
+            <input type="checkbox" id="pw-digit" checked class="accent-cyan-400 w-4 h-4" />
+            <span>数字 <span class="text-slate-500 font-mono">0-9</span></span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer rounded-lg border border-white/10 bg-white/5 px-2.5 sm:px-3 py-2.5">
+            <input type="checkbox" id="pw-symbol" class="accent-cyan-400 w-4 h-4" />
+            <span>特殊符号 <span class="text-slate-500 font-mono">!@#$</span></span>
+          </label>
+        </div>
+
+        <button id="pw-btn-gen" class="btn-primary mt-5"><i class="fa-solid fa-shuffle"></i>生成密码</button>
+
+        <!-- 结果 -->
+        <div class="mt-4 rounded-xl border border-cyan-300/20 bg-slate-950/50 px-4 py-4 flex items-center gap-3">
+          <span id="pw-result" class="flex-1 font-mono text-sm sm:text-base text-cyan-200 break-all leading-relaxed min-h-[1.5rem]">点击「生成密码」</span>
+          <button id="pw-btn-copy" title="复制密码"
+                  class="shrink-0 w-9 h-9 rounded-full bg-white/5 hover:bg-cyan-400/20 text-slate-300 hover:text-cyan-300
+                         border border-white/10 flex items-center justify-center transition">
+            <i class="fa-regular fa-copy"></i>
+          </button>
+        </div>
+      </section>
+
+      <!-- ========== 工具 6：二维码生成器 ========== -->
+      <section id="tool-qr" class="tool-panel glass-card panel-card p-5 sm:p-7 hidden">
+        <h3 class="text-base sm:text-lg font-semibold flex items-center gap-2 t-main">
+          <i class="fa-solid fa-qrcode text-cyan-300"></i> 二维码生成器
+        </h3>
+        <div class="mt-5">
+          <p class="tool-label"><i class="fa-solid fa-pen"></i>输入链接或文字</p>
+          <textarea id="qr-text" rows="4" spellcheck="false"
+                    class="tool-area" placeholder="https://example.com 或任意文字…"></textarea>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mt-4">
+          <button id="qr-btn-gen" class="btn-primary"><i class="fa-solid fa-wand-magic-sparkles"></i>生成二维码</button>
+          <a id="qr-btn-dl" class="btn-ghost pointer-events-none opacity-40 cursor-default" download="qrcode.png">
+            <i class="fa-solid fa-download"></i>下载图片
+          </a>
+        </div>
+        <p id="qr-tip" class="tip-line mt-3"></p>
+        <div class="mt-3 flex justify-center">
+          <div id="qr-box" class="inline-flex items-center justify-center min-h-[120px] rounded-xl bg-white/[0.03] border border-dashed border-white/10 px-4 py-4"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 底部版权 -->
+    <footer id="page-footer" class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1">
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a></p>
+      <p>Powered by HTML + TailwindCSS + Vanilla JavaScript</p>
+    </footer>
+  </main>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+  /* ==================================================================
+   *  工具入口配置 —— 新增工具在这里加对象即可
+   * ================================================================== */
+  const TOOLS = [
+    { id: 'json',     name: 'JSON 格式化', desc: '美化 / 压缩 JSON',   icon: 'fa-solid fa-code',           color: 'cyan'    },
+    { id: 'time',     name: '时间戳转换',   desc: 'Unix 时间戳 ⇄ 日期', icon: 'fa-solid fa-clock',          color: 'amber'   },
+    { id: 'base64',   name: 'Base64',      desc: '编码 / 解码',        icon: 'fa-solid fa-shield-halved',  color: 'emerald' },
+    { id: 'url',      name: 'URL 编解码',   desc: '链接参数转义',       icon: 'fa-solid fa-link',           color: 'violet'  },
+    { id: 'password', name: '密码生成器',   desc: '自定义随机密码',     icon: 'fa-solid fa-key',            color: 'rose'    },
+    { id: 'qr',       name: '二维码生成',   desc: '文字 / 链接生成',    icon: 'fa-solid fa-qrcode',         color: 'slate'   }
+  ];
+
+  /* 图标配色（完整类名，保证 Tailwind CDN 可识别） */
+  const COLOR_MAP = {
+    cyan:    'bg-cyan-400/10 text-cyan-300',
+    slate:   'bg-slate-300/10 text-slate-200',
+    amber:   'bg-amber-400/10 text-amber-300',
+    rose:    'bg-rose-400/10 text-rose-300',
+    emerald: 'bg-emerald-400/10 text-emerald-300',
+    violet:  'bg-violet-400/10 text-violet-300'
+  };
+
+  /* ==================================================================
+   *  通用工具函数
+   * ================================================================== */
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2000);
+  }
+
+  /** 复制文本：优先剪贴板 API，失败走降级方案 */
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('已复制到剪贴板～');
+    } catch (e) {
+      const input = document.createElement('textarea');
+      input.value = text;
+      input.style.position = 'fixed';
+      input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      input.remove();
+      showToast('已复制到剪贴板～');
+    }
+  }
+
+  /** 设置某行提示 */
+  function setTip(id, msg, isErr) {
+    const el = document.getElementById(id);
+    el.textContent = msg || '';
+    el.className = 'tip-line mt-2 font-mono ' + (isErr ? 'tip-err' : 'tip-ok');
+  }
+
+  /* ==================================================================
+   *  壁纸加载（与主页相同的异步生成图轮询逻辑）
+   * ================================================================== */
+  const BG_URL = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+      encodeURIComponent('动漫风格风景壁纸，璀璨星空下的平静湖面，远山与极光，唯美治愈，深蓝青色调，高清4K') +
+      '&image_size=landscape_16_9';
+  const PLACEHOLDER_SIZE = 1832;
+  const IMG_MAX_RETRY    = 8;
+  const IMG_RETRY_GAP    = 6000;
+
+  function loadBackground() {
+    let tries = 0;
+    const img = document.getElementById('bg-img');
+    function attempt() {
+      const probe = new Image();
+      probe.src = BG_URL + '&_t=' + Date.now();
+      probe.onload = () => {
+        const isPlaceholder = probe.naturalWidth === PLACEHOLDER_SIZE
+                           && probe.naturalHeight === PLACEHOLDER_SIZE;
+        if (isPlaceholder && tries < IMG_MAX_RETRY) {
+          tries++;
+          setTimeout(attempt, IMG_RETRY_GAP);
+        } else {
+          img.src = probe.src;
+          img.style.display = '';
+          document.getElementById('bg-overlay').classList.remove('loading');
+        }
+      };
+      probe.onerror = () => {
+        if (tries < IMG_MAX_RETRY) { tries++; setTimeout(attempt, IMG_RETRY_GAP); }
+      };
+    }
+    attempt();
+  }
+
+  /* ==================================================================
+   *  视图切换：入口网格 ⇄ 工具面板
+   * ================================================================== */
+  function renderToolGrid() {
+    const grid = document.getElementById('tool-grid');
+    grid.innerHTML = TOOLS.map((t, i) => `
+      <button data-id="${t.id}"
+              class="entry-card glass-card p-4 sm:p-5 flex flex-col items-center text-center gap-2.5 cursor-pointer"
+              style="animation-delay:${i * 0.06}s">
+        <span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg ${COLOR_MAP[t.color] || COLOR_MAP.cyan}
+                     transition-transform duration-300 group-hover:scale-110">
+          <i class="${t.icon}"></i>
+        </span>
+        <span class="text-sm text-slate-200">${t.name}</span>
+        <span class="text-[11px] text-slate-500 leading-snug">${t.desc}</span>
+      </button>
+    `).join('');
+    grid.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => openTool(btn.dataset.id));
+    });
+  }
+
+  function openTool(id) {
+    document.getElementById('view-grid').classList.add('hidden');
+    document.getElementById('view-tool').classList.remove('hidden');
+    document.querySelectorAll('.tool-panel').forEach(p =>
+      p.classList.toggle('hidden', p.id !== 'tool-' + id));
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  function backToGrid() {
+    document.getElementById('view-tool').classList.add('hidden');
+    document.getElementById('view-grid').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  /* ==================================================================
+   *  工具一：JSON 格式化 / 压缩
+   * ================================================================== */
+  function jsonRun(minify) {
+    const raw = document.getElementById('json-in').value;
+    const out = document.getElementById('json-out');
+    if (!raw.trim()) {
+      out.value = '';
+      setTip('json-tip', '请先输入 JSON 内容', true);
+      return;
+    }
+    try {
+      const obj = JSON.parse(raw);
+      out.value = minify ? JSON.stringify(obj) : JSON.stringify(obj, null, 2);
+      setTip('json-tip', minify ? '压缩成功' : '格式化成功', false);
+    } catch (e) {
+      out.value = '';
+      setTip('json-tip', 'JSON 解析失败：' + e.message, true);
+    }
+  }
+
+  function initJsonTool() {
+    document.getElementById('json-btn-format').addEventListener('click', () => jsonRun(false));
+    document.getElementById('json-btn-minify').addEventListener('click', () => jsonRun(true));
+    document.getElementById('json-btn-copy').addEventListener('click', () => {
+      const v = document.getElementById('json-out').value;
+      if (!v) { showToast('暂无结果可复制'); return; }
+      copyText(v);
+    });
+    document.getElementById('json-btn-clear').addEventListener('click', () => {
+      document.getElementById('json-in').value = '';
+      document.getElementById('json-out').value = '';
+      setTip('json-tip', '', false);
+    });
+  }
+
+  /* ==================================================================
+   *  工具二：时间戳 ⇄ 日期
+   * ================================================================== */
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  function formatDate(d) {
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+           ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+  }
+
+  function initTimeTool() {
+    // 当前时间戳实时刷新
+    const nowEl = document.getElementById('ts-now');
+    function tickNow() { nowEl.textContent = Math.floor(Date.now() / 1000); }
+    tickNow();
+    setInterval(tickNow, 1000);
+
+    // 填入当前时间戳
+    document.getElementById('ts-now-fill').addEventListener('click', () => {
+      document.getElementById('ts-in').value = Math.floor(Date.now() / 1000);
+    });
+
+    // 时间戳 → 日期
+    document.getElementById('ts-btn-convert').addEventListener('click', () => {
+      const raw = document.getElementById('ts-in').value.trim();
+      if (!/^\d+$/.test(raw)) { setTip('ts-result', '请输入数字时间戳', true); return; }
+      let num = Number(raw);
+      // 10 位按秒，13 位按毫秒；12 位及以下兜底按秒
+      if (raw.length <= 11) num *= 1000;
+      const d = new Date(num);
+      if (isNaN(d.getTime())) { setTip('ts-result', '无效时间戳', true); return; }
+      setTip('ts-result', formatDate(d), false);
+    });
+
+    // 日期 → 时间戳
+    const dateIn = document.getElementById('date-in');
+    // 默认填入当前本地时间
+    dateIn.value = (() => {
+      const d = new Date();
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+             'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+    })();
+    document.getElementById('date-btn-convert').addEventListener('click', () => {
+      if (!dateIn.value) { setTip('date-result', '请先选择日期', true); return; }
+      const ms = new Date(dateIn.value).getTime();
+      if (isNaN(ms)) { setTip('date-result', '无效日期', true); return; }
+      setTip('date-result', '秒：' + Math.floor(ms / 1000) + '　毫秒：' + ms, false);
+    });
+  }
+
+  /* ==================================================================
+   *  工具三：Base64 编码 / 解码（UTF-8 安全）
+   * ================================================================== */
+  function b64Encode(str) {
+    const bytes = new TextEncoder().encode(str);
+    let bin = '';
+    bytes.forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin);
+  }
+  function b64Decode(str) {
+    const bin = atob(str.replace(/\s/g, ''));
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
+  function initBase64Tool() {
+    const out = document.getElementById('b64-out');
+    document.getElementById('b64-btn-enc').addEventListener('click', () => {
+      const raw = document.getElementById('b64-in').value;
+      if (!raw) { out.value = ''; setTip('b64-tip', '请先输入要编码的内容', true); return; }
+      out.value = b64Encode(raw);
+      setTip('b64-tip', '编码成功', false);
+    });
+    document.getElementById('b64-btn-dec').addEventListener('click', () => {
+      const raw = document.getElementById('b64-in').value.trim();
+      if (!raw) { out.value = ''; setTip('b64-tip', '请先输入要解码的内容', true); return; }
+      try {
+        out.value = b64Decode(raw);
+        setTip('b64-tip', '解码成功', false);
+      } catch (e) {
+        out.value = '';
+        setTip('b64-tip', '解码失败：内容不是合法 Base64', true);
+      }
+    });
+    document.getElementById('b64-btn-copy').addEventListener('click', () => {
+      if (!out.value) { showToast('暂无结果可复制'); return; }
+      copyText(out.value);
+    });
+    document.getElementById('b64-btn-clear').addEventListener('click', () => {
+      document.getElementById('b64-in').value = '';
+      out.value = '';
+      setTip('b64-tip', '', false);
+    });
+  }
+
+  /* ==================================================================
+   *  工具四：URL 编码 / 解码
+   * ================================================================== */
+  function initUrlTool() {
+    const out = document.getElementById('url-out');
+    document.getElementById('url-btn-enc').addEventListener('click', () => {
+      const raw = document.getElementById('url-in').value;
+      if (!raw) { out.value = ''; setTip('url-tip', '请先输入要编码的内容', true); return; }
+      out.value = encodeURIComponent(raw);
+      setTip('url-tip', '编码成功', false);
+    });
+    document.getElementById('url-btn-dec').addEventListener('click', () => {
+      const raw = document.getElementById('url-in').value.trim();
+      if (!raw) { out.value = ''; setTip('url-tip', '请先输入要解码的内容', true); return; }
+      try {
+        out.value = decodeURIComponent(raw);
+        setTip('url-tip', '解码成功', false);
+      } catch (e) {
+        out.value = '';
+        setTip('url-tip', '解码失败：包含非法转义序列', true);
+      }
+    });
+    document.getElementById('url-btn-copy').addEventListener('click', () => {
+      if (!out.value) { showToast('暂无结果可复制'); return; }
+      copyText(out.value);
+    });
+    document.getElementById('url-btn-clear').addEventListener('click', () => {
+      document.getElementById('url-in').value = '';
+      out.value = '';
+      setTip('url-tip', '', false);
+    });
+  }
+
+  /* ==================================================================
+   *  工具五：随机密码生成器（crypto 安全随机，每种选中字符集至少出现一次）
+   * ================================================================== */
+  const PW_SETS = {
+    lower:  'abcdefghijklmnopqrstuvwxyz',
+    upper:  'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+    digit:  '0123456789',
+    symbol: '!@#$%^&*()-_=+[]{};:,.?'
+  };
+
+  function securePick(charset) {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return charset[buf[0] % charset.length];
+  }
+
+  function generatePassword() {
+    const len = Number(document.getElementById('pw-len').value);
+    const picked = ['lower', 'upper', 'digit', 'symbol']
+      .filter(k => document.getElementById('pw-' + k).checked)
+      .map(k => PW_SETS[k]);
+
+    if (picked.length === 0) {
+      showToast('请至少选择一种字符类型');
+      return;
+    }
+
+    const allChars = picked.join('');
+    const arr = [];
+    // 每种已选字符集先保证出现一位（长度允许时）
+    picked.forEach(set => { if (arr.length < len) arr.push(securePick(set)); });
+    while (arr.length < len) arr.push(securePick(allChars));
+
+    // Fisher-Yates 洗牌，避免“保证位”总在前面
+    for (let i = arr.length - 1; i > 0; i--) {
+      const buf = new Uint32Array(1);
+      crypto.getRandomValues(buf);
+      const j = buf[0] % (i + 1);
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    document.getElementById('pw-result').textContent = arr.join('');
+  }
+
+  function initPasswordTool() {
+    const lenInput = document.getElementById('pw-len');
+    const lenVal = document.getElementById('pw-len-val');
+    lenInput.addEventListener('input', () => { lenVal.textContent = lenInput.value; });
+    document.getElementById('pw-btn-gen').addEventListener('click', generatePassword);
+    document.getElementById('pw-btn-copy').addEventListener('click', () => {
+      const v = document.getElementById('pw-result').textContent;
+      if (!v || v.startsWith('点击')) { showToast('请先生成密码'); return; }
+      copyText(v);
+    });
+  }
+
+  /* ==================================================================
+   *  工具六：二维码生成器
+   * ================================================================== */
+  function initQrTool() {
+    const box = document.getElementById('qr-box');
+    const tip = document.getElementById('qr-tip');
+    const dl = document.getElementById('qr-btn-dl');
+
+    document.getElementById('qr-btn-gen').addEventListener('click', () => {
+      const text = document.getElementById('qr-text').value.trim();
+      if (!text) {
+        tip.textContent = '请先输入链接或文字';
+        tip.className = 'tip-line mt-3 tip-err';
+        return;
+      }
+      if (typeof QRCode === 'undefined') {
+        tip.textContent = '二维码组件加载失败，请检查网络后刷新';
+        tip.className = 'tip-line mt-3 tip-err';
+        return;
+      }
+
+      box.innerHTML = '';
+      const size = window.innerWidth < 420 ? 180 : 220;
+      new QRCode(box, {
+        text: text,
+        width: size,
+        height: size,
+        colorDark: '#0f172a',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      tip.textContent = '二维码生成成功';
+      tip.className = 'tip-line mt-3 tip-ok';
+
+      // 启用下载：qrcodejs 在支持 canvas 的浏览器中会生成 <canvas>
+      setTimeout(() => {
+        const canvas = box.querySelector('canvas');
+        if (canvas) {
+          dl.href = canvas.toDataURL('image/png');
+          dl.classList.remove('pointer-events-none', 'opacity-40', 'cursor-default');
+        } else {
+          tip.textContent = '二维码已生成，但当前浏览器不支持直接下载，可截图保存';
+          tip.className = 'tip-line mt-3 tip-err';
+        }
+      }, 60);
+    });
+  }
+
+  /* ==================================================================
+   *  初始化
+   * ================================================================== */
+  function init() {
+    loadBackground();
+    renderToolGrid();
+
+    document.getElementById('btn-back-grid').addEventListener('click', backToGrid);
+
+    initJsonTool();
+    initTimeTool();
+    initBase64Tool();
+    initUrlTool();
+    initPasswordTool();
+    initQrTool();
+
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  }
+
+  init();
+  </script>
+</body>
+</html>
