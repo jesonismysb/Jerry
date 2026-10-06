@@ -306,6 +306,57 @@
     }
     #drawer-fab:active { transform: scale(.94); }
 
+    /* ==================== 刷题视图 ==================== */
+    .quiz-bar {
+      height: 6px; border-radius: 999px;
+      background: var(--c-input); overflow: hidden;
+    }
+    #quiz-bar-fill {
+      height: 100%; width: 0; border-radius: 999px;
+      background: linear-gradient(90deg, #06b6d4, #67e8f9);
+      transition: width .3s ease;
+    }
+    .type-badge {
+      display: inline-block; font-size: 11px; line-height: 1.6;
+      padding: .1rem .55rem; border-radius: 999px; margin-right: .4rem;
+      background: rgba(103, 232, 249, .12); color: #67e8f9;
+      vertical-align: 2px;
+    }
+    .type-badge.judge { background: rgba(251, 191, 36, .14); color: #fbbf24; }
+    .quiz-opt {
+      display: flex; align-items: center; gap: .6rem;
+      width: 100%; text-align: left;
+      padding: .6rem .85rem; margin-bottom: .55rem;
+      border-radius: .8rem; font-size: 13.5px; line-height: 1.6;
+      border: 1px solid var(--c-border);
+      background: var(--c-input); color: var(--c-main);
+      cursor: pointer; transition: all .2s ease;
+    }
+    .quiz-opt:hover { border-color: rgba(103, 232, 249, .45); }
+    .quiz-opt .opt-key {
+      width: 24px; height: 24px; border-radius: 7px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(103, 232, 249, .12); color: #67e8f9; font-size: 12px;
+    }
+    .quiz-opt.correct { border-color: rgba(74, 222, 128, .7); background: rgba(74, 222, 128, .12); }
+    .quiz-opt.correct .opt-key { background: rgba(74, 222, 128, .2); color: #4ade80; }
+    .quiz-opt.wrong { border-color: rgba(248, 113, 113, .7); background: rgba(248, 113, 113, .12); }
+    .quiz-opt.wrong .opt-key { background: rgba(248, 113, 113, .2); color: #f87171; }
+    .quiz-opt.disabled { pointer-events: none; }
+    .quiz-explain {
+      border-left: 3px solid rgba(103, 232, 249, .5);
+      background: var(--c-soft); border-radius: .6rem;
+      padding: .65rem .85rem; font-size: 12.5px; line-height: 1.8;
+      color: var(--c-sub); margin-top: .8rem;
+    }
+
+    /* ==================== 错题本 ==================== */
+    .wrong-item {
+      border: 1px solid rgba(248, 113, 113, .28);
+      background: var(--c-soft);
+      border-radius: .95rem; padding: .85rem .95rem; margin-bottom: .7rem;
+    }
+
     /* ==================== Toast ==================== */
     #toast {
       position: fixed; left: 50%;
@@ -369,6 +420,12 @@
         <h1 class="text-sm sm:text-base font-semibold truncate bar-text" style="color:var(--c-main)">中职对口升学教材</h1>
       </div>
       <div class="flex items-center gap-2">
+        <button id="btn-wrong" title="错题本"
+                class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
+                       hover:bg-cyan-400/20 text-slate-300 transition-all relative">
+          <i class="fa-solid fa-book-bookmark"></i>
+          <span id="wrong-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-bold px-1 rounded-full leading-none h-4 flex items-center justify-center">0</span>
+        </button>
         <a href="./blog.html" title="返回博客"
            class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
                   hover:bg-cyan-400/20 hover:text-cyan-300 text-slate-300 transition-all">
@@ -385,6 +442,8 @@
 
   <main class="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-5">
 
+    <!-- ==================== 视图：教材书架（默认） ==================== -->
+    <div id="view-main" class="space-y-5">
     <!-- 专栏简介 -->
     <section class="glass-card p-5 sm:p-7 fade-item">
       <h2 class="text-lg sm:text-xl font-bold t-main leading-snug">
@@ -428,6 +487,33 @@
       <!-- 右侧：当前教材内容 -->
       <section id="book-content" class="min-w-0"></section>
     </div>
+    </div><!-- /view-main -->
+
+    <!-- ==================== 视图：刷题 ==================== -->
+    <div id="view-quiz" class="hidden space-y-4">
+      <div class="glass-card p-4 sm:p-5">
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="quiz-back" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回章节</button>
+          <h2 id="quiz-title" class="text-sm sm:text-base font-bold t-main min-w-0 truncate"></h2>
+          <span id="quiz-progress" class="ml-auto text-xs t-sub shrink-0"></span>
+        </div>
+        <div class="quiz-bar mt-3"><div id="quiz-bar-fill"></div></div>
+      </div>
+      <div id="quiz-body"></div>
+    </div>
+
+    <!-- ==================== 视图：错题本 ==================== -->
+    <div id="view-wrong" class="hidden space-y-4">
+      <div class="glass-card p-4 sm:p-5">
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="wrong-back" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回书架</button>
+          <h2 class="text-sm sm:text-base font-bold t-main"><i class="fa-solid fa-book-bookmark text-rose-400 mr-1.5"></i>我的错题本</h2>
+          <span id="wrong-count" class="text-xs t-sub"></span>
+          <button id="wrong-restart" class="btn-quiz ml-auto"><i class="fa-solid fa-rotate"></i>重刷错题</button>
+        </div>
+      </div>
+      <div id="wrong-list"></div>
+    </div>
 
     <!-- 页脚 -->
     <footer id="page-footer" class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1">
@@ -463,7 +549,9 @@
    *     knowledge  核心知识点（可留空 → 显示待补充）
    *     examPoints 重点考点
    *     memorize   背诵要点（对口升学高频）
-   *     practiceUrl 配套练习题链接（留空时按钮提示待补充）
+   *     questions  题库数组（可留空 → 刷题按钮提示待补充），每题：
+   *       { type:'choice', q:'题干', options:['A','B','C','D'], answer:正确项下标, explain:'解析' }
+   *       { type:'judge',  q:'题干', answer:true/false, explain:'解析' }
    * ================================================================== */
   const BOOKS = [
   {
@@ -501,9 +589,16 @@
           '口诀：神经快准短，体液慢广久，自身小而弱。',
           '反馈方向记"负稳正爆"：负反馈维持稳态，正反馈让过程爆发完成。'
         ],
-        practiceUrl: ''
+        practiceUrl: '',
+        questions: [
+          { type:'choice', q:'生命活动最基本的特征是', options:['兴奋性','新陈代谢','适应性','生殖'], answer:1, explain:'新陈代谢是生命活动的最基本特征，它包括同化作用与异化作用两个方面。' },
+          { type:'choice', q:'能引起组织发生反应的最小刺激强度称为', options:['阈强度','阈刺激','阈上刺激','阈下刺激'], answer:0, explain:'阈强度（阈值）是指刚能引起组织发生反应的最小刺激强度。' },
+          { type:'choice', q:'神经调节的基本方式是', options:['反射','反应','反馈','适应'], answer:0, explain:'神经调节的基本方式是反射，其结构基础是反射弧。' },
+          { type:'judge',  q:'内环境即细胞内液。', answer:false, explain:'内环境指的是细胞外液，包括血浆、组织液等，而不是细胞内液。' },
+          { type:'judge',  q:'负反馈的作用是维持内环境稳态。', answer:true, explain:'负反馈的作用在于维持机体的相对稳定，如体温调节、血压调节等。' }
+        ]
       },
-      { title: '第2章　细胞的基本功能', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第2章　细胞的基本功能', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '', questions: [] },
       { title: '第3章　血液',           sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
       { title: '第4章　血液循环',       sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
       { title: '第5章　呼吸',           sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
@@ -754,12 +849,12 @@
                 ? `<div class="memo-card"><ul class="note-list">${ch.memorize.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div>`
                 : `<div class="todo-box">高频背诵要点整理中。</div>`}
 
-              <!-- 配套练习 / 跳转刷题 -->
-              <div class="flex flex-wrap gap-2 mt-4">
-                ${ch.practiceUrl
-                  ? `<a class="btn-quiz" href="${esc(ch.practiceUrl)}"><i class="fa-solid fa-pen-to-square"></i>配套练习题</a>`
-                  : `<button class="btn-quiz" data-todo-practice="1"><i class="fa-solid fa-pen-to-square"></i>配套练习题</button>`}
-                <a class="btn-soft" href="./math.html#quiz"><i class="fa-solid fa-dumbbell"></i>跳转刷题板块</a>
+              <!-- 开始刷题 -->
+              <div class="flex flex-wrap items-center gap-2 mt-4">
+                <button class="btn-quiz" data-quiz="${ci}"><i class="fa-solid fa-dumbbell"></i>开始刷题（单选 + 判断）</button>
+                ${ch.questions && ch.questions.length
+                  ? `<span class="text-[11px] t-sub">本章题库 ${ch.questions.length} 题</span>`
+                  : `<span class="text-[11px] t-sub">题库待补充</span>`}
               </div>
 
             </div>
@@ -774,9 +869,9 @@
         document.getElementById(head.dataset.chapter).classList.toggle('open');
       });
     });
-    // 习题待补充提示
-    box.querySelectorAll('[data-todo-practice]').forEach(b => {
-      b.addEventListener('click', () => showToast('本章配套习题待补充，敬请期待～'));
+    // 开始刷题
+    box.querySelectorAll('[data-quiz]').forEach(b => {
+      b.addEventListener('click', () => startQuiz(currentBookId, Number(b.dataset.quiz), 'main'));
     });
   }
 
@@ -882,6 +977,254 @@
   }
 
   /* ==================================================================
+   *  随机刷题 + 本地错题本（localStorage，无需后端）
+   * ================================================================== */
+  const LS_WRONG = 'zz_textbook_wrongbook';
+  const QUIZ_MAX = 10;   // 每套最多随机抽题数
+
+  let quizState = null;  // { bookId, chIdx, from:'main'|'wrong', qs:[], idx, correct }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  /** 三视图切换：main / quiz / wrong */
+  function showView(name) {
+    document.getElementById('view-main').classList.toggle('hidden', name !== 'main');
+    document.getElementById('view-quiz').classList.toggle('hidden', name !== 'quiz');
+    document.getElementById('view-wrong').classList.toggle('hidden', name !== 'wrong');
+    document.getElementById('drawer-fab').style.display = name === 'main' ? '' : 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /** 开始刷题；qsOverride 用于「重刷错题」模式 */
+  function startQuiz(bookId, chIdx, from, qsOverride) {
+    const book = BOOKS.find(b => b.id === bookId);
+    let pool;
+    if (qsOverride) {
+      pool = qsOverride;
+    } else {
+      const ch = book.chapters[chIdx];
+      pool = (ch.questions || []).map((q, i) => ({ ...q, _i: i }));
+    }
+    if (!pool.length) { showToast('本章题库待补充，敬请期待～'); return; }
+
+    quizState = {
+      bookId, chIdx, from: from || 'main',
+      qs: shuffle(pool.slice()).slice(0, QUIZ_MAX),
+      idx: 0, correct: 0
+    };
+    document.getElementById('quiz-title').textContent =
+      qsOverride ? '错题重刷' : (book.title + ' · ' + book.chapters[chIdx].title);
+    showView('quiz');
+    renderQuizStep();
+  }
+
+  /** 渲染当前题目 */
+  function renderQuizStep() {
+    const { qs, idx } = quizState;
+    const total = qs.length;
+
+    if (idx >= total) { finishQuiz(); return; }
+
+    const q = qs[idx];
+    const isJudge = q.type === 'judge';
+    const opts = isJudge ? ['正确', '错误'] : q.options;
+
+    document.getElementById('quiz-progress').textContent = `第 ${idx + 1} / ${total} 题`;
+    document.getElementById('quiz-bar-fill').style.width = (idx / total * 100) + '%';
+
+    const body = document.getElementById('quiz-body');
+    body.innerHTML = `
+      <div class="glass-card p-4 sm:p-5 fade-item">
+        <p class="text-[13.5px] sm:text-sm font-semibold t-main leading-relaxed">
+          <span class="type-badge ${isJudge ? 'judge' : ''}">${isJudge ? '判断题' : '单选题'}</span>
+          ${idx + 1}. ${esc(q.q)}
+        </p>
+        <div class="mt-3.5">
+          ${opts.map((o, i) => `
+            <button class="quiz-opt" data-opt="${i}">
+              <span class="opt-key">${isJudge ? (i === 0 ? '✓' : '✗') : 'ABCD'[i]}</span>
+              <span>${esc(o)}</span>
+            </button>`).join('')}
+        </div>
+        <div id="quiz-explain" class="hidden"></div>
+        <div class="mt-2 text-right">
+          <button id="quiz-next" class="btn-quiz hidden">${idx + 1 === total ? '查看成绩' : '下一题'} <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>`;
+
+    body.querySelectorAll('.quiz-opt').forEach(btn => {
+      btn.addEventListener('click', () => answerQuiz(Number(btn.dataset.opt)));
+    });
+    document.getElementById('quiz-next').addEventListener('click', () => {
+      quizState.idx++;
+      renderQuizStep();
+    });
+  }
+
+  /** 作答：即时判分 + 展示答案解析；答错自动进错题本 */
+  function answerQuiz(pick) {
+    const q = quizState.qs[quizState.idx];
+    const correctIdx = q.type === 'judge' ? (q.answer ? 0 : 1) : q.answer;
+
+    document.querySelectorAll('#quiz-body .quiz-opt').forEach((b, i) => {
+      b.classList.add('disabled');
+      if (i === correctIdx) b.classList.add('correct');
+      else if (i === pick) b.classList.add('wrong');
+    });
+
+    const right = pick === correctIdx;
+    if (right) quizState.correct++;
+    else addWrong(q);
+
+    const ex = document.getElementById('quiz-explain');
+    ex.className = 'quiz-explain';
+    ex.innerHTML = `
+      <p class="font-semibold ${right ? 'text-green-400' : 'text-rose-400'} mb-1">${right ? '✓ 回答正确' : '✗ 回答错误'}</p>
+      <p><span class="text-cyan-300">解析：</span>${esc(q.explain || '暂无解析')}</p>`;
+    document.getElementById('quiz-next').classList.remove('hidden');
+    document.getElementById('quiz-bar-fill').style.width =
+      ((quizState.idx + 1) / quizState.qs.length * 100) + '%';
+  }
+
+  /** 一套做完：正确率统计 + 再来一套 */
+  function finishQuiz() {
+    const total = quizState.qs.length;
+    const pct = Math.round(quizState.correct / total * 100);
+    const msg = pct >= 90 ? '优秀！对口升学稳了 🎉'
+              : pct >= 75 ? '很不错，继续保持 💪'
+              : pct >= 60 ? '及格啦，错题记得回看 📖'
+              : '别灰心，错题本帮你查漏补缺 🌱';
+
+    document.getElementById('quiz-progress').textContent = '已完成';
+    document.getElementById('quiz-bar-fill').style.width = '100%';
+    document.getElementById('quiz-body').innerHTML = `
+      <div class="glass-card p-6 sm:p-8 text-center fade-item">
+        <p class="text-4xl font-black ${pct >= 60 ? 'text-cyan-300' : 'text-rose-400'}">${pct}<span class="text-lg">%</span></p>
+        <p class="text-[13px] t-sub mt-2">共 ${total} 题 · 答对 ${quizState.correct} · 答错 ${total - quizState.correct}</p>
+        <p class="text-[13px] t-main mt-1.5">${msg}</p>
+        ${total - quizState.correct > 0 ? '<p class="text-[11.5px] t-sub mt-1">答错的题目已自动存入错题本</p>' : ''}
+        <div class="flex flex-wrap justify-center gap-2.5 mt-5">
+          <button id="quiz-again" class="btn-quiz"><i class="fa-solid fa-rotate"></i>再刷一套</button>
+          <button id="quiz-goback" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回</button>
+        </div>
+      </div>`;
+
+    document.getElementById('quiz-again').addEventListener('click', () => {
+      if (quizState.from === 'wrong') {
+        const pool = wrongPool();
+        if (!pool.length) { showToast('错题本已清空，去刷章节题吧～'); exitQuiz(); return; }
+        startQuiz(quizState.bookId, quizState.chIdx, 'wrong', pool);
+      } else {
+        startQuiz(quizState.bookId, quizState.chIdx, 'main');
+      }
+    });
+    document.getElementById('quiz-goback').addEventListener('click', exitQuiz);
+  }
+
+  /** 退出刷题：回来源视图 */
+  function exitQuiz() {
+    if (quizState && quizState.from === 'wrong') {
+      renderWrongbook();
+      showView('wrong');
+    } else {
+      showView('main');
+    }
+  }
+
+  /* ---------- 错题本存储 ---------- */
+  function getWrong() {
+    try { return JSON.parse(localStorage.getItem(LS_WRONG)) || []; } catch (e) { return []; }
+  }
+  function saveWrong(list) {
+    localStorage.setItem(LS_WRONG, JSON.stringify(list));
+    updateWrongBadge();
+  }
+  function updateWrongBadge() {
+    const n = getWrong().length;
+    const badge = document.getElementById('wrong-badge');
+    badge.textContent = n > 99 ? '99+' : n;
+    badge.classList.toggle('hidden', !n);
+  }
+
+  /** 答错收录（按 key 去重） */
+  function addWrong(q) {
+    const list = getWrong();
+    const key = q._key || (quizState.bookId + '-' + quizState.chIdx + '-' + q._i);
+    if (list.some(w => w.key === key)) return;
+    const book = BOOKS.find(b => b.id === quizState.bookId);
+    const where = book
+      ? book.title + ' · ' + book.chapters[quizState.chIdx].title
+      : (q._where || '错题重刷');
+    list.unshift({
+      key, type: q.type, q: q.q, options: q.options || null,
+      answer: q.answer, explain: q.explain || '', where, ts: Date.now()
+    });
+    saveWrong(list);
+  }
+
+  /** 错题 → 刷题题池 */
+  function wrongPool() {
+    return getWrong().map(w => ({
+      type: w.type, q: w.q, options: w.options, answer: w.answer,
+      explain: w.explain, _key: w.key, _where: w.where
+    }));
+  }
+
+  /** 渲染错题本列表 */
+  function renderWrongbook() {
+    const list = getWrong();
+    document.getElementById('wrong-count').textContent = list.length ? `共 ${list.length} 题` : '空空如也';
+    document.getElementById('wrong-restart').style.display = list.length ? '' : 'none';
+    const box = document.getElementById('wrong-list');
+
+    if (!list.length) {
+      box.innerHTML = `<div class="glass-card p-8 text-center text-sm t-sub">错题本还是空的～刷题时答错的题目会自动收进来 📒</div>`;
+      return;
+    }
+    box.innerHTML = list.map(w => `
+      <div class="wrong-item">
+        <p class="text-[11px] t-sub mb-1.5"><i class="fa-solid fa-location-dot mr-1 opacity-60"></i>${esc(w.where)} · ${new Date(w.ts).toLocaleDateString('zh-CN')}</p>
+        <p class="text-[13px] t-main font-semibold leading-relaxed">
+          <span class="type-badge ${w.type === 'judge' ? 'judge' : ''}">${w.type === 'judge' ? '判断' : '单选'}</span>${esc(w.q)}
+        </p>
+        <p class="text-[12.5px] mt-2 text-green-400">正确答案：${w.type === 'judge' ? (w.answer ? '正确' : '错误') : ('ABCD'[w.answer] + '. ' + esc(w.options[w.answer]))}</p>
+        ${w.explain ? `<p class="text-[12px] t-sub mt-1 leading-relaxed">解析：${esc(w.explain)}</p>` : ''}
+        <button class="btn-soft mt-2.5 !py-1 !px-3 !text-[11.5px]" data-remove="${esc(w.key)}"><i class="fa-solid fa-check"></i>已掌握，移出</button>
+      </div>`).join('');
+
+    box.querySelectorAll('[data-remove]').forEach(b => {
+      b.addEventListener('click', () => {
+        saveWrong(getWrong().filter(w => w.key !== b.dataset.remove));
+        renderWrongbook();
+        showToast('已移出错题本');
+      });
+    });
+  }
+
+  /** 刷题 / 错题本静态按钮绑定 */
+  function initQuiz() {
+    document.getElementById('quiz-back').addEventListener('click', exitQuiz);
+    document.getElementById('btn-wrong').addEventListener('click', () => {
+      renderWrongbook();
+      showView('wrong');
+    });
+    document.getElementById('wrong-back').addEventListener('click', () => showView('main'));
+    document.getElementById('wrong-restart').addEventListener('click', () => {
+      const pool = wrongPool();
+      if (!pool.length) { showToast('错题本是空的～'); return; }
+      quizState = { bookId: null, chIdx: -1, from: 'wrong' };
+      startQuiz(null, -1, 'wrong', pool);
+    });
+    updateWrongBadge();
+  }
+
+  /* ==================================================================
    *  初始化
    * ================================================================== */
   function init() {
@@ -891,6 +1234,7 @@
     renderBookContent();
     initSearch();
     initDrawer();
+    initQuiz();
     document.getElementById('footer-year').textContent = new Date().getFullYear();
   }
 
