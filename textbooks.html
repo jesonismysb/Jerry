@@ -495,7 +495,8 @@
         <div class="flex items-center gap-3 flex-wrap">
           <button id="quiz-back" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回章节</button>
           <h2 id="quiz-title" class="text-sm sm:text-base font-bold t-main min-w-0 truncate"></h2>
-          <span id="quiz-progress" class="ml-auto text-xs t-sub shrink-0"></span>
+          <span id="quiz-timer" class="ml-auto text-xs t-sub shrink-0"></span>
+          <span id="quiz-progress" class="text-xs t-sub shrink-0"></span>
         </div>
         <div class="quiz-bar mt-3"><div id="quiz-bar-fill"></div></div>
       </div>
@@ -869,9 +870,9 @@
         document.getElementById(head.dataset.chapter).classList.toggle('open');
       });
     });
-    // 开始刷题
+    // 开始刷题：先进入套题数量选择
     box.querySelectorAll('[data-quiz]').forEach(b => {
-      b.addEventListener('click', () => startQuiz(currentBookId, Number(b.dataset.quiz), 'main'));
+      b.addEventListener('click', () => openQuizSetup(currentBookId, Number(b.dataset.quiz)));
     });
   }
 
@@ -1001,9 +1002,123 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  /** 开始刷题；qsOverride 用于「重刷错题」模式 */
-  function startQuiz(bookId, chIdx, from, qsOverride) {
+  /* ---------- 刷题进度本地保存（中途退出可续做） ---------- */
+  const LS_PROG = 'zz_textbook_quiz_progress';
+  function saveProgress() {
+    if (!quizState || quizState.from !== 'main') return;
+    // 存档下标 = 已答题数：当前题若已作答则 +1，续做时从下一题开始
+    const saveIdx = quizState.idx + (quizState.answered ? 1 : 0);
+    if (saveIdx >= quizState.qs.length) return; // 已完成的不保存
+    localStorage.setItem(LS_PROG, JSON.stringify({
+      bookId: quizState.bookId, chIdx: quizState.chIdx, from: 'main',
+      count: quizState.count, qs: quizState.qs, idx: saveIdx,
+      correct: quizState.correct,
+      elapsed: Date.now() - quizState.startTime, savedAt: Date.now()
+    }));
+  }
+  function getProgress() {
+    try { return JSON.parse(localStorage.getItem(LS_PROG)); } catch (e) { return null; }
+  }
+  function clearProgress() { localStorage.removeItem(LS_PROG); }
+
+  /* ---------- 做题计时 ---------- */
+  function startTimer() {
+    stopTimer();
+    quizState.timerId = setInterval(() => {
+      const s = Math.floor((Date.now() - quizState.startTime) / 1000);
+      const el = document.getElementById('quiz-timer');
+      if (el) el.textContent = '⏱ ' + fmtTime(s);
+    }, 1000);
+  }
+  function stopTimer() {
+    if (quizState && quizState.timerId) { clearInterval(quizState.timerId); quizState.timerId = null; }
+  }
+  function fmtTime(s) {
+    return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  /** 章节刷题入口：先选套题数量（10/20/50/100），有未完成进度则提示续做 */
+  function openQuizSetup(bookId, chIdx) {
     const book = BOOKS.find(b => b.id === bookId);
+    const ch = book.chapters[chIdx];
+    const pool = ch.questions || [];
+    if (!pool.length) { showToast('本章题库待补充，敬请期待～'); return; }
+
+    document.getElementById('quiz-title').textContent = book.title + ' · ' + ch.title;
+    document.getElementById('quiz-progress').textContent = '选择套题数量';
+    document.getElementById('quiz-timer').textContent = '';
+    document.getElementById('quiz-bar-fill').style.width = '0%';
+
+    // 数量选项按题库容量去重（如题库 5 题则只有「5 题」一项）
+    const counts = [...new Set([10, 20, 50, 100].map(c => Math.min(c, pool.length)))];
+    const saved = getProgress();
+    const matchSaved = saved && saved.bookId === bookId && saved.chIdx === chIdx && saved.from === 'main';
+
+    const body = document.getElementById('quiz-body');
+    body.innerHTML = `
+      ${matchSaved ? `
+      <div class="glass-card p-4 sm:p-5 fade-item" style="border-color: rgba(251,191,36,.45)">
+        <p class="text-[13px] t-main font-semibold"><i class="fa-solid fa-clock-rotate-left text-amber-400 mr-1.5"></i>检测到上次未完成的刷题</p>
+        <p class="text-[12px] t-sub mt-1">进度：第 ${saved.idx + 1} / ${saved.qs.length} 题 · 已答对 ${saved.correct} 题 · 已用时 ${fmtTime(Math.floor((saved.elapsed || 0) / 1000))}</p>
+        <div class="flex flex-wrap gap-2 mt-3">
+          <button id="quiz-resume" class="btn-quiz"><i class="fa-solid fa-play"></i>继续做题</button>
+          <button id="quiz-discard" class="btn-soft"><i class="fa-solid fa-trash-can"></i>放弃并重新选择</button>
+        </div>
+      </div>` : ''}
+      <div class="glass-card p-5 sm:p-6 fade-item">
+        <p class="text-[13px] t-sub">本章题库共 <span class="text-cyan-300 font-semibold">${pool.length}</span> 题，选择本次随机抽题数量：</p>
+        <div class="flex flex-wrap gap-2 mt-3.5">
+          ${counts.map(c => `<button class="btn-soft count-chip" data-count="${c}">${c} 题${c === pool.length && ![10,20,50,100].includes(c) ? '（全部）' : ''}</button>`).join('')}
+        </div>
+        <p class="text-[11px] t-sub mt-2 opacity-80">超出题库数量时按实际题数出题；含单选 + 判断，随机打乱；中途退出自动保存进度</p>
+        <div class="mt-4 text-right">
+          <button id="quiz-start" class="btn-quiz"><i class="fa-solid fa-play"></i>开始刷题</button>
+        </div>
+      </div>`;
+
+    // 数量选择（默认第一项）
+    let picked = counts[0];
+    const chips = body.querySelectorAll('.count-chip');
+    function markChips() {
+      chips.forEach(el => {
+        const on = Number(el.dataset.count) === picked;
+        el.style.borderColor = on ? 'rgba(103,232,249,.55)' : '';
+        el.style.color = on ? '#67e8f9' : '';
+      });
+    }
+    chips.forEach(el => el.addEventListener('click', () => { picked = Number(el.dataset.count); markChips(); }));
+    markChips();
+
+    body.querySelector('#quiz-start').addEventListener('click', () => startQuiz(bookId, chIdx, 'main', null, picked));
+    if (matchSaved) {
+      body.querySelector('#quiz-resume').addEventListener('click', () => resumeQuiz(saved));
+      body.querySelector('#quiz-discard').addEventListener('click', () => {
+        clearProgress();
+        openQuizSetup(bookId, chIdx);
+        showToast('已清除上次进度');
+      });
+    }
+    showView('quiz');
+  }
+
+  /** 恢复未完成的刷题进度 */
+  function resumeQuiz(saved) {
+    quizState = {
+      bookId: saved.bookId, chIdx: saved.chIdx, from: 'main',
+      qs: saved.qs, idx: saved.idx, correct: saved.correct, count: saved.count,
+      startTime: Date.now() - (saved.elapsed || 0)
+    };
+    const book = BOOKS.find(b => b.id === saved.bookId);
+    document.getElementById('quiz-title').textContent = book.title + ' · ' + book.chapters[saved.chIdx].title;
+    showView('quiz');
+    startTimer();
+    renderQuizStep();
+    showToast('已恢复上次进度');
+  }
+
+  /** 开始刷题；qsOverride 用于「重刷错题」模式 */
+  function startQuiz(bookId, chIdx, from, qsOverride, count) {
+    const book = qsOverride ? null : BOOKS.find(b => b.id === bookId);
     let pool;
     if (qsOverride) {
       pool = qsOverride;
@@ -1013,14 +1128,18 @@
     }
     if (!pool.length) { showToast('本章题库待补充，敬请期待～'); return; }
 
+    const n = Math.min(count || QUIZ_MAX, pool.length);
     quizState = {
-      bookId, chIdx, from: from || 'main',
-      qs: shuffle(pool.slice()).slice(0, QUIZ_MAX),
-      idx: 0, correct: 0
+      bookId, chIdx, from: from || 'main', count: n,
+      qs: shuffle(pool.slice()).slice(0, n),
+      idx: 0, correct: 0,
+      startTime: Date.now()
     };
+    if (quizState.from === 'main') clearProgress();   // 新开一套，清掉旧进度
     document.getElementById('quiz-title').textContent =
       qsOverride ? '错题重刷' : (book.title + ' · ' + book.chapters[chIdx].title);
     showView('quiz');
+    startTimer();
     renderQuizStep();
   }
 
@@ -1030,6 +1149,7 @@
     const total = qs.length;
 
     if (idx >= total) { finishQuiz(); return; }
+    quizState.answered = false;
 
     const q = qs[idx];
     const isJudge = q.type === 'judge';
@@ -1079,6 +1199,7 @@
     });
 
     const right = pick === correctIdx;
+    quizState.answered = true;   // 标记当前题已作答（供进度存档判断）
     if (right) quizState.correct++;
     else addWrong(q);
 
@@ -1090,12 +1211,18 @@
     document.getElementById('quiz-next').classList.remove('hidden');
     document.getElementById('quiz-bar-fill').style.width =
       ((quizState.idx + 1) / quizState.qs.length * 100) + '%';
+    saveProgress();   // 每答一题自动存档，中途退出可续做
   }
 
-  /** 一套做完：正确率统计 + 再来一套 */
+  /** 一套做完：正确率 + 用时统计 + 再来一套 */
   function finishQuiz() {
     const total = quizState.qs.length;
     const pct = Math.round(quizState.correct / total * 100);
+    const secs = Math.floor((Date.now() - quizState.startTime) / 1000);
+    stopTimer();
+    clearProgress();   // 本套已完成，清除存档
+    document.getElementById('quiz-timer').textContent = '⏱ ' + fmtTime(secs);
+
     const msg = pct >= 90 ? '优秀！对口升学稳了 🎉'
               : pct >= 75 ? '很不错，继续保持 💪'
               : pct >= 60 ? '及格啦，错题记得回看 📖'
@@ -1107,6 +1234,7 @@
       <div class="glass-card p-6 sm:p-8 text-center fade-item">
         <p class="text-4xl font-black ${pct >= 60 ? 'text-cyan-300' : 'text-rose-400'}">${pct}<span class="text-lg">%</span></p>
         <p class="text-[13px] t-sub mt-2">共 ${total} 题 · 答对 ${quizState.correct} · 答错 ${total - quizState.correct}</p>
+        <p class="text-[13px] t-sub mt-1"><i class="fa-regular fa-clock mr-1"></i>用时 ${fmtTime(secs)}</p>
         <p class="text-[13px] t-main mt-1.5">${msg}</p>
         ${total - quizState.correct > 0 ? '<p class="text-[11.5px] t-sub mt-1">答错的题目已自动存入错题本</p>' : ''}
         <div class="flex flex-wrap justify-center gap-2.5 mt-5">
@@ -1119,16 +1247,18 @@
       if (quizState.from === 'wrong') {
         const pool = wrongPool();
         if (!pool.length) { showToast('错题本已清空，去刷章节题吧～'); exitQuiz(); return; }
-        startQuiz(quizState.bookId, quizState.chIdx, 'wrong', pool);
+        startQuiz(quizState.bookId, quizState.chIdx, 'wrong', pool, pool.length);
       } else {
-        startQuiz(quizState.bookId, quizState.chIdx, 'main');
+        startQuiz(quizState.bookId, quizState.chIdx, 'main', null, quizState.count);
       }
     });
     document.getElementById('quiz-goback').addEventListener('click', exitQuiz);
   }
 
-  /** 退出刷题：回来源视图 */
+  /** 退出刷题：未完成先存档，再回来源视图 */
   function exitQuiz() {
+    if (quizState && quizState.idx < quizState.qs.length) saveProgress();
+    stopTimer();
     if (quizState && quizState.from === 'wrong') {
       renderWrongbook();
       showView('wrong');
@@ -1218,8 +1348,7 @@
     document.getElementById('wrong-restart').addEventListener('click', () => {
       const pool = wrongPool();
       if (!pool.length) { showToast('错题本是空的～'); return; }
-      quizState = { bookId: null, chIdx: -1, from: 'wrong' };
-      startQuiz(null, -1, 'wrong', pool);
+      startQuiz(null, -1, 'wrong', pool, pool.length);
     });
     updateWrongBadge();
   }
