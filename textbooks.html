@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端自适应视口 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="中职对口升学教材专栏 - 生理学基础、解剖学基础、英语、语文教材章节目录、背诵要点与刷题" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>中职对口升学教材 · 奈良</title>
+
+  <!-- 网页小图标（与主页一致的内联 SVG） -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- Tailwind CSS（CDN 方式，无需构建） -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 图标库 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    /* Tailwind 自定义配置（与主页一致） */
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { accent: '#67e8f9' }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ==================== 主题变量：暗色（默认）/ 浅色（与博客同一套） ==================== */
+    :root {
+      --c-main: #e2e8f0;
+      --c-sub: #94a3b8;
+      --c-card: rgba(15, 23, 42, 0.42);
+      --c-border: rgba(148, 197, 255, 0.14);
+      --c-input: rgba(255, 255, 255, 0.05);
+      --c-soft: rgba(255, 255, 255, 0.03);
+      --c-rail: rgba(2, 6, 23, 0.35);
+    }
+    body.light {
+      --c-main: #1e293b;
+      --c-sub: #5b6b7f;
+      --c-card: rgba(255, 255, 255, 0.72);
+      --c-border: rgba(15, 23, 42, 0.10);
+      --c-input: rgba(255, 255, 255, 0.62);
+      --c-soft: rgba(15, 23, 42, 0.03);
+      --c-rail: rgba(255, 255, 255, 0.5);
+    }
+
+    /* ==================== 全局基础样式 ==================== */
+    html, body { height: 100%; }
+    html, body { overflow-x: hidden; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+    body.light { background-color: #d8e9f2; }
+    .t-main { color: var(--c-main); }
+    .t-sub  { color: var(--c-sub); }
+
+    /* ==================== 毛玻璃卡片（与博客同一套参数） ==================== */
+    .glass-card {
+      background: var(--c-card);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--c-border);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: border-color .3s ease, background .4s ease, box-shadow .3s ease;
+    }
+    .glass-card:hover {
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+
+    /* ==================== 书本封面（纯 CSS，深浅色自适应） ==================== */
+    .book-cover {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      border-radius: .55rem;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(2, 8, 23, .45), inset 2px 0 0 rgba(255,255,255,.18);
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      padding: .6rem .55rem;
+      color: #fff;
+    }
+    .book-cover::before {            /* 书脊高光 */
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
+      background: linear-gradient(90deg, rgba(255,255,255,.35), rgba(255,255,255,0));
+    }
+    .book-cover .bc-deco {
+      position: absolute; right: -14px; bottom: -14px;
+      font-size: 58px; opacity: .16;
+    }
+    .book-cover .bc-title {
+      font-size: 12.5px; font-weight: 700; line-height: 1.45;
+      text-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+    .book-cover .bc-pub { font-size: 8.5px; opacity: .85; letter-spacing: .5px; }
+
+    /* 封面主题配色（完整类名供 Tailwind CDN 识别） */
+    .cv-physiology { background: linear-gradient(150deg,#0e7490 0%,#155e75 55%,#164e63 100%); }
+    .cv-anatomy    { background: linear-gradient(150deg,#9d174d 0%,#831843 55%,#500724 100%); }
+    .cv-english    { background: linear-gradient(150deg,#1d4ed8 0%,#1e40af 55%,#172554 100%); }
+    .cv-chinese    { background: linear-gradient(150deg,#b45309 0%,#92400e 55%,#451a03 100%); }
+
+    /* 左侧书本导航项 */
+    .book-nav-item {
+      display: flex; align-items: center; gap: .75rem;
+      width: 100%; text-align: left;
+      padding: .6rem; border-radius: .9rem;
+      border: 1px solid transparent;
+      background: transparent;
+      cursor: pointer; transition: all .25s ease;
+    }
+    .book-nav-item:hover { background: var(--c-input); }
+    .book-nav-item .book-cover { width: 42px; flex-shrink: 0; }
+    .book-nav-item .bn-name { font-size: 13px; font-weight: 600; color: var(--c-main); line-height: 1.5; }
+    .book-nav-item .bn-meta { font-size: 11px; color: var(--c-sub); margin-top: 2px; line-height: 1.5; }
+    .book-nav-item.active {
+      background: var(--c-input);
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 4px 16px rgba(8, 145, 178, .15);
+    }
+    .book-nav-item.active .bn-name { color: #67e8f9; }
+
+    /* ==================== 搜索框 / 结果 ==================== */
+    .search-input {
+      background: var(--c-input);
+      border: 1px solid var(--c-border);
+      color: var(--c-main);
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .search-input::placeholder { color: var(--c-sub); }
+    .search-input:focus {
+      outline: none;
+      border-color: rgba(103, 232, 249, 0.45);
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+    }
+    #search-results {
+      position: absolute; left: 0; right: 0; top: calc(100% + 8px); z-index: 45;
+      max-height: 340px; overflow-y: auto;
+      background: rgba(11, 18, 32, .97);
+      border: 1px solid rgba(148, 197, 255, .2);
+      border-radius: 1rem;
+      box-shadow: 0 16px 44px rgba(2, 8, 23, .55);
+      padding: .4rem; display: none;
+    }
+    body.light #search-results { background: rgba(255,255,255,.98); }
+    #search-results a {
+      display: block; padding: .55rem .7rem; border-radius: .6rem;
+      font-size: 12.5px; color: #c2cfdf; line-height: 1.6;
+    }
+    body.light #search-results a { color: #334155; }
+    #search-results a:hover, #search-results a:active { background: rgba(103,232,249,.08); color: #67e8f9; }
+    #search-results .sr-type {
+      display: inline-block; font-size: 10.5px; margin-right: .4rem;
+      padding: .05rem .45rem; border-radius: 999px;
+      background: rgba(103,232,249,.12); color: #67e8f9;
+    }
+    #search-results .sr-where { color: #7d8fa6; font-size: 11px; display: block; margin-top: 2px; }
+    #search-results .sr-empty { padding: .9rem; text-align: center; color: #7d8fa6; font-size: 12.5px; }
+
+    /* ==================== 章节手风琴 ==================== */
+    .chapter-item {
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: .95rem;
+      background: var(--c-soft);
+      margin-bottom: .7rem;
+      overflow: hidden;
+    }
+    body.light .chapter-item { border-color: rgba(15,23,42,.1); }
+    .chapter-head {
+      width: 100%; display: flex; align-items: center; gap: .7rem;
+      padding: .8rem .95rem; cursor: pointer; text-align: left;
+      font-size: 14px; color: var(--c-main); font-weight: 600;
+      background: transparent; border: none;
+    }
+    .chapter-head .ch-no {
+      width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+      background: rgba(103, 232, 249, .1); color: #67e8f9;
+      font-size: 11.5px; display: flex; align-items: center; justify-content: center;
+    }
+    .chapter-head .ch-caret {
+      margin-left: auto; color: #67e8f9; font-size: 11px;
+      transition: transform .25s ease;
+    }
+    .chapter-item.open .ch-caret { transform: rotate(180deg); }
+    .chapter-item.open { border-color: rgba(103, 232, 249, .3); }
+    .chapter-item.flash {
+      border-color: rgba(94, 234, 212, .9);
+      box-shadow: 0 0 0 3px rgba(94, 234, 212, .22);
+    }
+
+    .chapter-body { display: none; padding: 0 .95rem .95rem; }
+    .chapter-item.open .chapter-body { display: block; }
+
+    /* 小节 chips */
+    .sec-chip {
+      display: inline-block; font-size: 11.5px; line-height: 1.5;
+      padding: .25rem .65rem; margin: 0 .4rem .4rem 0; border-radius: 999px;
+      background: var(--c-input); color: var(--c-sub);
+      border: 1px solid var(--c-border);
+    }
+
+    /* 板块小标题 */
+    .blk-title {
+      display: flex; align-items: center; gap: .45rem;
+      font-size: 12.5px; font-weight: 600; color: var(--c-main);
+      margin: .85rem 0 .5rem;
+    }
+    .blk-title i { font-size: 12px; }
+    .i-know { color: #38bdf8; }
+    .i-exam { color: #fbbf24; }
+    .i-memo { color: #fb7185; }
+
+    /* 条目列表 */
+    .note-list { list-style: none; padding: 0; margin: 0; }
+    .note-list li {
+      position: relative; padding-left: 1.1rem;
+      margin-bottom: .4rem; font-size: 13px; line-height: 1.8;
+      color: var(--c-sub);
+    }
+    .note-list li::before {
+      content: ''; position: absolute; left: 0; top: .7em;
+      width: 5px; height: 5px; border-radius: 50%;
+    }
+    .note-list.know li::before { background: #38bdf8; }
+    .note-list.exam li::before { background: #fbbf24; }
+
+    /* 背诵要点卡 */
+    .memo-card {
+      border-radius: .85rem;
+      border: 1px solid rgba(251, 113, 133, .35);
+      background: rgba(251, 113, 133, .07);
+      padding: .75rem .9rem;
+    }
+    .memo-card .note-list li::before { background: #fb7185; }
+    .memo-card .note-list li { color: var(--c-main); }
+
+    /* 内容待补充空状态 */
+    .todo-box {
+      border: 1px dashed rgba(148, 163, 184, .35);
+      border-radius: .75rem;
+      padding: .7rem .9rem;
+      font-size: 12px; color: var(--c-sub); line-height: 1.7;
+    }
+
+    /* 章节内按钮 */
+    .btn-quiz {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: 12.5px; color: #ecfeff;
+      padding: .45rem 1rem; border-radius: 999px;
+      background: linear-gradient(to right, rgba(8,145,178,.9), rgba(14,165,233,.9));
+      border: 1px solid rgba(103, 232, 249, .4);
+      box-shadow: 0 5px 16px rgba(8, 145, 178, .25);
+      cursor: pointer; transition: all .25s ease;
+    }
+    .btn-quiz:hover { filter: brightness(1.1); }
+    .btn-quiz:active { transform: scale(.97); }
+    .btn-soft {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: 12.5px; color: var(--c-sub);
+      padding: .45rem 1rem; border-radius: 999px;
+      background: var(--c-input); border: 1px solid var(--c-border);
+      cursor: pointer; transition: all .25s ease;
+    }
+    .btn-soft:hover { color: #67e8f9; border-color: rgba(103,232,249,.4); }
+
+    /* ==================== 移动端抽屉 ==================== */
+    #drawer-mask {
+      position: fixed; inset: 0; z-index: 60;
+      background: rgba(2, 6, 23, .6); backdrop-filter: blur(2px);
+      opacity: 0; pointer-events: none; transition: opacity .3s ease;
+    }
+    #drawer-mask.show { opacity: 1; pointer-events: auto; }
+    #book-drawer {
+      position: fixed; top: 0; bottom: 0; left: 0; z-index: 61;
+      width: min(82vw, 310px);
+      background: rgba(11, 18, 32, .97);
+      border-right: 1px solid rgba(148, 197, 255, .18);
+      transform: translateX(-100%); transition: transform .32s ease;
+      display: flex; flex-direction: column;
+    }
+    #book-drawer.show { transform: translateX(0); }
+    #drawer-head {
+      padding: 1rem 1.1rem; border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #drawer-list { flex: 1; overflow-y: auto; padding: .8rem; }
+
+    /* 移动端目录 FAB（左下角，避开右侧数学 FAB 区域） */
+    #drawer-fab {
+      position: fixed; left: 16px;
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      z-index: 55; width: 46px; height: 46px; border-radius: 50%;
+      background: linear-gradient(135deg, rgba(8,145,178,.95), rgba(14,165,233,.95));
+      border: 1px solid rgba(103, 232, 249, 0.5);
+      color: #ecfeff; font-size: 17px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .45);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #drawer-fab:active { transform: scale(.94); }
+
+    /* ==================== Toast ==================== */
+    #toast {
+      position: fixed; left: 50%;
+      bottom: calc(28px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.94); color: #ecfeff; font-size: 13.5px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .4);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 80; max-width: 86vw; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-item { animation: fadeUp .7s ease both; }
+
+    /* 浅色模式下青色强调字加深，保证白底可读 */
+    body.light .text-cyan-200,
+    body.light .text-cyan-300 { color: #0e7490 !important; }
+
+    /* 顶栏亮色覆盖（与博客一致） */
+    body.light .topbar { background: rgba(240, 249, 255, 0.65); border-color: rgba(15, 23, 42, 0.08); }
+    body.light .topbar .bar-text { color: #1e293b; }
+    body.light #bg-overlay {
+      background: linear-gradient(180deg, rgba(235,246,252,.86) 0%, rgba(235,246,252,.7) 45%, rgba(235,246,252,.9) 100%) !important;
+    }
+    #bg-overlay { transition: opacity .8s ease; }
+    #bg-overlay.loading {
+      background: linear-gradient(180deg, rgba(2,6,23,.97) 0%, rgba(2,6,23,.92) 50%, rgba(2,6,23,.98) 100%) !important;
+    }
+    #page-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- 背景层：壁纸 + 遮罩（与博客同一张壁纸） -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <div id="bg-overlay" class="absolute inset-0 loading"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <!-- 顶部导航栏 -->
+  <header class="topbar sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-book-medical text-cyan-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold truncate bar-text" style="color:var(--c-main)">中职对口升学教材</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="./blog.html" title="返回博客"
+           class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
+                  hover:bg-cyan-400/20 hover:text-cyan-300 text-slate-300 transition-all">
+          <i class="fa-solid fa-feather"></i>
+        </a>
+        <button id="btn-theme" title="切换深浅色"
+                class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
+                       hover:bg-cyan-400/20 text-slate-300 transition-all">
+          <i id="icon-theme" class="fa-solid fa-sun"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- 专栏简介 -->
+    <section class="glass-card p-5 sm:p-7 fade-item">
+      <h2 class="text-lg sm:text-xl font-bold t-main leading-snug">
+        【中职对口升学教材】<span class="text-cyan-300">章节目录 · 背诵要点 · 配套刷题</span>
+      </h2>
+      <p class="text-[13px] t-sub mt-2.5 leading-relaxed">
+        收录护理/助产专业医学基础课与文化课统编教材。点击左侧教材切换，展开章节查看
+        <span class="text-cyan-200">小节、核心知识点、重点考点、背诵要点</span>，
+        并可跳转刷题。详细笔记持续补充中，欢迎常回来看看 ✍️
+      </p>
+    </section>
+
+    <!-- 站内搜索 -->
+    <section class="glass-card p-4 sm:p-5 fade-item relative z-30">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-4 top-[14px] text-cyan-300/70 text-sm"></i>
+        <input id="search-input" type="text" autocomplete="off"
+               placeholder="搜索教材 / 章节 / 知识点，如：生理学、稳态、反射弧、Unit…"
+               class="search-input w-full rounded-full pl-10 pr-9 py-2.5 text-sm" />
+        <button id="search-clear" class="hidden absolute right-3.5 top-3 text-slate-400 hover:text-cyan-300">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+        <div id="search-results"></div>
+      </div>
+    </section>
+
+    <!-- 桌面双栏：左侧教材导航 + 右侧章节 -->
+    <div class="grid lg:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
+
+      <!-- 教材导航（桌面常显；同一份数据也渲染进移动端抽屉） -->
+      <aside class="hidden lg:block">
+        <div class="glass-card p-2.5 sticky top-20">
+          <p class="text-xs t-sub px-2.5 py-2 flex items-center gap-2">
+            <i class="fa-solid fa-book-open text-cyan-300"></i>教材书架
+            <span class="ml-auto text-[10.5px] opacity-70" id="book-count"></span>
+          </p>
+          <nav id="book-rail"></nav>
+        </div>
+      </aside>
+
+      <!-- 右侧：当前教材内容 -->
+      <section id="book-content" class="min-w-0"></section>
+    </div>
+
+    <!-- 页脚 -->
+    <footer id="page-footer" class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1">
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a> · <a href="./blog.html" class="hover:text-cyan-300 transition-colors">返回博客</a></p>
+      <p>Powered by TailwindCSS + Vanilla JavaScript</p>
+    </footer>
+  </main>
+
+  <!-- 移动端：目录 FAB + 抽屉 -->
+  <button id="drawer-fab" class="lg:hidden" title="教材目录"><i class="fa-solid fa-book-open"></i></button>
+  <div id="drawer-mask" class="lg:hidden"></div>
+  <div id="book-drawer" class="lg:hidden">
+    <div id="drawer-head">
+      <span class="text-sm font-semibold text-slate-200"><i class="fa-solid fa-book-open text-cyan-300 mr-2"></i>教材书架</span>
+      <button id="drawer-close" class="text-slate-400 hover:text-cyan-300 w-8 h-8"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div id="drawer-list"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <script>
+  /* ==================================================================
+   *  教材数据（框架先行，笔记可持续补充）
+   *  ------------------------------------------------------------------
+   *  每本书结构：
+   *   id 唯一标识 | title 书名 | cover 封面配色类 | deco 封面装饰图标
+   *   major 适用专业 | editors 主编 | publisher 出版社
+   *   chapters 章节数组，每章：
+   *     title 章名
+   *     sections   小节（字符串数组，可留空）
+   *     knowledge  核心知识点（可留空 → 显示待补充）
+   *     examPoints 重点考点
+   *     memorize   背诵要点（对口升学高频）
+   *     practiceUrl 配套练习题链接（留空时按钮提示待补充）
+   * ================================================================== */
+  const BOOKS = [
+  {
+    id: 'physiology',
+    title: '生理学基础',
+    cover: 'cv-physiology', deco: 'fa-solid fa-heart-pulse',
+    major: '供护理、助产专业用',
+    editors: '钱斐、张红爱',
+    publisher: '人民卫生出版社',
+    chapters: [
+      {
+        title: '第1章　绪论',
+        sections: [
+          '第一节　生理学的研究对象和任务',
+          '第二节　生命活动的基本特征',
+          '第三节　机体生理功能的调节',
+          '第四节　机体功能活动的反馈控制'
+        ],
+        knowledge: [
+          '生理学是研究正常机体生命活动规律的科学；其研究内容包括细胞、器官系统及整体三个水平。',
+          '生命活动的基本特征：新陈代谢（最基本特征，含同化与异化作用）、兴奋性、适应性、生殖。',
+          '能引起机体发生反应的环境变化称为刺激；刺激三要素为强度、持续时间和强度-时间变化率。',
+          '阈值（阈强度）：刚能引起组织发生反应的最小刺激强度；阈强度越小，组织兴奋性越高。',
+          '体液约占体重 60%，其中细胞内液占 40%、细胞外液占 20%（血浆 5%、组织液 15%）。',
+          '内环境即细胞外液；内环境理化性质保持相对稳定的状态称稳态，是细胞进行正常生命活动的必要条件。'
+        ],
+        examPoints: [
+          '生命活动最基本的特征是新陈代谢；兴奋性的衡量指标——阈值与兴奋性呈反变关系。',
+          '三种调节方式的特点：神经调节迅速、精确、短暂；体液调节缓慢、广泛、持久；自身调节幅度小、局限。',
+          '神经调节的基本方式是反射，结构基础是反射弧（感受器→传入神经→神经中枢→传出神经→效应器）。',
+          '负反馈举例：降压反射、体温调节；正反馈举例：排尿反射、排便反射、血液凝固、分娩、动作电位去极化。'
+        ],
+        memorize: [
+          '内环境＝细胞外液＝血浆＋组织液（＋淋巴、脑脊液等）；稳态是相对的动态平衡。',
+          '口诀：神经快准短，体液慢广久，自身小而弱。',
+          '反馈方向记"负稳正爆"：负反馈维持稳态，正反馈让过程爆发完成。'
+        ],
+        practiceUrl: ''
+      },
+      { title: '第2章　细胞的基本功能', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第3章　血液',           sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第4章　血液循环',       sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第5章　呼吸',           sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第6章　消化和吸收',     sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第7章　能量代谢和体温', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第8章　尿的生成与排出', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第9章　感觉器官',       sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第10章　神经系统的功能', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第11章　内分泌',        sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第12章　生殖',          sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' }
+    ]
+  },
+  {
+    id: 'anatomy',
+    title: '解剖学基础',
+    cover: 'cv-anatomy', deco: 'fa-solid fa-bone',
+    major: '供护理、助产专业用',
+    editors: '王发宝、彭厚诚',
+    publisher: '人民卫生出版社',
+    chapters: [
+      { title: '第1章　绪论',            sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第2章　细胞与基本组织',  sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第3章　运动系统',        sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第4章　消化系统',        sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第5章　呼吸系统',        sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第6章　泌尿系统',        sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第7章　生殖系统',        sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第8章　脉管系统',        sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第9章　感觉器',          sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第10章　神经系统',       sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第11章　内分泌系统',     sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第12章　人体胚胎学概要', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' }
+    ]
+  },
+  {
+    id: 'english',
+    title: '英语2 基础模块（修订版）',
+    cover: 'cv-english', deco: 'fa-solid fa-language',
+    major: '中职公共基础课',
+    editors: '—',
+    publisher: '高等教育出版社',
+    chapters: [
+      { title: 'Unit 1', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: 'Unit 2', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: 'Unit 3', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: 'Unit 4', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: 'Unit 5', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: 'Unit 6', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: 'Unit 7', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: 'Unit 8', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' }
+    ]
+  },
+  {
+    id: 'chinese',
+    title: '语文 基础模块 上册',
+    cover: 'cv-chinese', deco: 'fa-solid fa-pen-nib',
+    major: '中职公共基础课',
+    editors: '—',
+    publisher: '高等教育出版社（2023）',
+    chapters: [
+      {
+        title: '第一单元　现代诗歌',
+        sections: ['一　沁园春·长沙（毛泽东）'],
+        knowledge: [
+          '词的常识：词牌（沁园春）与题目（长沙）；词按字数分小令、中调、长调。',
+          '意象与意境：抓住"万山、层林、湘江、百舸、鹰、鱼"等意象分析壮阔画面。'
+        ],
+        examPoints: ['《沁园春·长沙》名句默写："鹰击长空，鱼翔浅底，万类霜天竞自由。"',
+                     '"怅寥廓，问苍茫大地，谁主沉浮？"的抒情主人公形象。'],
+        memorize: ['必背：独立寒秋，湘江北去，橘子洲头。'],
+        practiceUrl: ''
+      },
+      { title: '第二单元　', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第三单元　', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第四单元　', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第五单元　', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第六单元　', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第七单元　', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' },
+      { title: '第八单元　', sections: [], knowledge: [], examPoints: [], memorize: [], practiceUrl: '' }
+    ]
+  }
+  ];
+  /* 预留：中职数学教材后续按同样结构加入 BOOKS 数组即可 */
+
+  /* ==================================================================
+   *  通用工具
+   * ================================================================== */
+  let toastTimer = null;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  }
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  /* ==================================================================
+   *  壁纸（与博客同一套轮询逻辑）
+   * ================================================================== */
+  const BG_URL = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+      encodeURIComponent('动漫风格图书馆书房壁纸，阳光洒在堆叠的书本上，安静治愈，深蓝青色调，高清4K') +
+      '&image_size=landscape_16_9';
+  const PLACEHOLDER_SIZE = 1832;
+  function loadBackground() {
+    let tries = 0;
+    const img = document.getElementById('bg-img');
+    function attempt() {
+      const p = new Image();
+      p.src = BG_URL + '&_t=' + Date.now();
+      p.onload = () => {
+        if (p.naturalWidth === PLACEHOLDER_SIZE && tries < 8) { tries++; setTimeout(attempt, 6000); }
+        else { img.src = p.src; img.style.display = ''; document.getElementById('bg-overlay').classList.remove('loading'); }
+      };
+      p.onerror = () => { if (tries < 8) { tries++; setTimeout(attempt, 6000); } };
+    }
+    attempt();
+  }
+
+  /* ==================================================================
+   *  深浅色切换（与博客共用同一 localStorage key）
+   * ================================================================== */
+  const LS_THEME = 'zhishihunzi_blog_theme';
+  function applyTheme(light) {
+    document.body.classList.toggle('light', light);
+    document.getElementById('icon-theme').className = light ? 'fa-solid fa-moon' : 'fa-solid fa-sun';
+  }
+  function initTheme() {
+    applyTheme(localStorage.getItem(LS_THEME) === 'light');
+    document.getElementById('btn-theme').addEventListener('click', () => {
+      const light = !document.body.classList.contains('light');
+      applyTheme(light);
+      localStorage.setItem(LS_THEME, light ? 'light' : 'dark');
+    });
+  }
+
+  /* ==================================================================
+   *  封面 HTML（导航缩略图与大封面共用）
+   * ================================================================== */
+  function coverHTML(book) {
+    return `
+      <div class="book-cover ${book.cover}">
+        <p class="bc-title">${esc(book.title)}</p>
+        <i class="bc-deco ${book.deco}"></i>
+        <p class="bc-pub">${esc(book.publisher)}</p>
+      </div>`;
+  }
+
+  /* ==================================================================
+   *  状态：当前选中教材
+   * ================================================================== */
+  let currentBookId = BOOKS[0].id;
+
+  /** 教材导航项 HTML */
+  function navItemHTML(book) {
+    return `
+      <button class="book-nav-item ${book.id === currentBookId ? 'active' : ''}" data-book="${book.id}">
+        ${coverHTML(book)}
+        <span class="min-w-0">
+          <span class="bn-name block">${esc(book.title)}</span>
+          <span class="bn-meta block">${esc(book.publisher)}</span>
+        </span>
+      </button>`;
+  }
+
+  /** 渲染桌面导航 + 移动抽屉（同一份数据） */
+  function renderBookNav() {
+    document.getElementById('book-rail').innerHTML = BOOKS.map(navItemHTML).join('');
+    document.getElementById('drawer-list').innerHTML = BOOKS.map(navItemHTML).join('');
+    document.getElementById('book-count').textContent = `共 ${BOOKS.length} 本`;
+
+    document.querySelectorAll('.book-nav-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectBook(btn.dataset.book);
+        closeDrawer();
+      });
+    });
+  }
+
+  function selectBook(bookId) {
+    currentBookId = bookId;
+    renderBookNav();
+    renderBookContent();
+  }
+
+  /* ==================================================================
+   *  右侧教材内容：大封面 + 章节手风琴
+   * ================================================================== */
+  function listBlock(type, arr, icon) {
+    if (!arr || !arr.length) {
+      return `<div class="todo-box"><i class="fa-solid fa-pen-ruler mr-1.5 opacity-70"></i>本部分笔记整理中，位置已预留，后续直接补充即可。</div>`;
+    }
+    return `
+      <ul class="note-list ${type}">
+        ${arr.map(x => `<li>${esc(x)}</li>`).join('')}
+      </ul>`;
+  }
+
+  function renderBookContent() {
+    const book = BOOKS.find(b => b.id === currentBookId);
+    const box = document.getElementById('book-content');
+
+    box.innerHTML = `
+      <!-- 教材信息头 -->
+      <div class="glass-card p-4 sm:p-5 mb-4 flex items-center gap-4">
+        <div class="w-16 sm:w-[72px] shrink-0">${coverHTML(book)}</div>
+        <div class="min-w-0">
+          <h2 class="text-base sm:text-lg font-bold t-main leading-snug">${esc(book.title)}</h2>
+          <p class="text-[12px] t-sub mt-1.5 leading-relaxed">
+            ${esc(book.major)}<br class="hidden sm:block"/>
+            主编：${esc(book.editors)}　|　${esc(book.publisher)}
+          </p>
+        </div>
+      </div>
+
+      <!-- 章节列表 -->
+      <div id="chapter-list">
+        ${book.chapters.map((ch, ci) => {
+          const cid = book.id + '-ch-' + ci;
+          return `
+          <div class="chapter-item" id="${cid}">
+            <button class="chapter-head" data-chapter="${cid}">
+              <span class="ch-no">${ci + 1}</span>
+              <span class="min-w-0">${esc(ch.title)}</span>
+              <i class="fa-solid fa-chevron-down ch-caret"></i>
+            </button>
+            <div class="chapter-body">
+
+              <!-- 本章小节 -->
+              <p class="blk-title"><i class="fa-solid fa-list-ul text-cyan-300"></i>本章小节</p>
+              ${ch.sections && ch.sections.length
+                ? ch.sections.map(s => `<span class="sec-chip">${esc(s)}</span>`).join('')
+                : `<div class="todo-box">小节标题待补充。</div>`}
+
+              <!-- 核心知识点 -->
+              <p class="blk-title"><i class="fa-solid fa-circle-info i-know"></i>核心知识点</p>
+              ${listBlock('know', ch.knowledge)}
+
+              <!-- 重点考点 -->
+              <p class="blk-title"><i class="fa-solid fa-star i-exam"></i>重点考点</p>
+              ${listBlock('exam', ch.examPoints)}
+
+              <!-- 背诵要点 -->
+              <p class="blk-title"><i class="fa-solid fa-fire i-memo"></i>背诵要点 · 对口升学高频</p>
+              ${ch.memorize && ch.memorize.length
+                ? `<div class="memo-card"><ul class="note-list">${ch.memorize.map(m => `<li>${esc(m)}</li>`).join('')}</ul></div>`
+                : `<div class="todo-box">高频背诵要点整理中。</div>`}
+
+              <!-- 配套练习 / 跳转刷题 -->
+              <div class="flex flex-wrap gap-2 mt-4">
+                ${ch.practiceUrl
+                  ? `<a class="btn-quiz" href="${esc(ch.practiceUrl)}"><i class="fa-solid fa-pen-to-square"></i>配套练习题</a>`
+                  : `<button class="btn-quiz" data-todo-practice="1"><i class="fa-solid fa-pen-to-square"></i>配套练习题</button>`}
+                <a class="btn-soft" href="./math.html#quiz"><i class="fa-solid fa-dumbbell"></i>跳转刷题板块</a>
+              </div>
+
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+
+    // 章节展开/收起（手风琴：可同时展开多个）
+    box.querySelectorAll('.chapter-head').forEach(head => {
+      head.addEventListener('click', () => {
+        document.getElementById(head.dataset.chapter).classList.toggle('open');
+      });
+    });
+    // 习题待补充提示
+    box.querySelectorAll('[data-todo-practice]').forEach(b => {
+      b.addEventListener('click', () => showToast('本章配套习题待补充，敬请期待～'));
+    });
+  }
+
+  /* ==================================================================
+   *  站内搜索
+   * ================================================================== */
+  function initSearch() {
+    const input = document.getElementById('search-input');
+    const panel = document.getElementById('search-results');
+    const clearBtn = document.getElementById('search-clear');
+
+    /** 展开指定教材+章节并滚动、高亮 */
+    function locate(bookId, chapterIndex) {
+      if (currentBookId !== bookId) selectBook(bookId);
+      const cid = bookId + '-ch-' + chapterIndex;
+      const item = document.getElementById(cid);
+      if (item) {
+        item.classList.add('open', 'flash');
+        setTimeout(() => item.classList.remove('flash'), 1800);
+        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    input.addEventListener('input', () => {
+      const kw = input.value.trim();
+      const low = kw.toLowerCase();
+      clearBtn.classList.toggle('hidden', !kw);
+      if (!kw) { panel.style.display = 'none'; return; }
+
+      const hits = [];
+      BOOKS.forEach(book => {
+        // 教材名命中
+        if (book.title.toLowerCase().includes(low)) {
+          hits.push({ type: '教材', text: book.title, where: book.publisher, book: book.id, ch: 0 });
+        }
+        book.chapters.forEach((ch, ci) => {
+          if (ch.title.toLowerCase().includes(low) || ch.title.includes(kw)) {
+            hits.push({ type: '章节', text: ch.title, where: book.title, book: book.id, ch: ci });
+          }
+          ch.sections.forEach(s => {
+            if (s.toLowerCase().includes(low) || s.includes(kw)) {
+              hits.push({ type: '小节', text: s, where: book.title + ' · ' + ch.title, book: book.id, ch: ci });
+            }
+          });
+          ['knowledge', 'examPoints', 'memorize'].forEach(key => {
+            (ch[key] || []).forEach(line => {
+              if (line.toLowerCase().includes(low) || line.includes(kw)) {
+                hits.push({
+                  type: key === 'knowledge' ? '知识点' : (key === 'examPoints' ? '考点' : '背诵'),
+                  text: line, where: book.title + ' · ' + ch.title, book: book.id, ch: ci
+                });
+              }
+            });
+          });
+        });
+      });
+
+      if (!hits.length) {
+        panel.innerHTML = '<p class="sr-empty">没有找到相关内容，换个关键词试试～</p>';
+      } else {
+        panel.innerHTML = hits.slice(0, 18).map(h =>
+          `<a href="#" data-book="${h.book}" data-ch="${h.ch}">
+             <span class="sr-type">${h.type}</span>${esc(h.text)}
+             <span class="sr-where">${esc(h.where)}</span>
+           </a>`
+        ).join('') + (hits.length > 18 ? `<p class="sr-empty">还有 ${hits.length - 18} 条，请细化关键词</p>` : '');
+
+        panel.querySelectorAll('a').forEach(a => {
+          a.addEventListener('click', (e) => {
+            e.preventDefault();
+            locate(a.dataset.book, Number(a.dataset.ch));
+            panel.style.display = 'none';
+          });
+        });
+      }
+      panel.style.display = 'block';
+    });
+
+    clearBtn.addEventListener('click', () => {
+      input.value = ''; panel.style.display = 'none';
+      clearBtn.classList.add('hidden'); input.focus();
+    });
+    document.addEventListener('click', (e) => {
+      if (!panel.contains(e.target) && e.target !== input) panel.style.display = 'none';
+    });
+  }
+
+  /* ==================================================================
+   *  移动端抽屉
+   * ================================================================== */
+  function openDrawer() {
+    document.getElementById('drawer-mask').classList.add('show');
+    document.getElementById('book-drawer').classList.add('show');
+  }
+  function closeDrawer() {
+    document.getElementById('drawer-mask').classList.remove('show');
+    document.getElementById('book-drawer').classList.remove('show');
+  }
+  function initDrawer() {
+    document.getElementById('drawer-fab').addEventListener('click', openDrawer);
+    document.getElementById('drawer-mask').addEventListener('click', closeDrawer);
+    document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  }
+
+  /* ==================================================================
+   *  初始化
+   * ================================================================== */
+  function init() {
+    loadBackground();
+    initTheme();
+    renderBookNav();
+    renderBookContent();
+    initSearch();
+    initDrawer();
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+  }
+
+  init();
+  </script>
+</body>
+</html>
