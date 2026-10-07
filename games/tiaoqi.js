@@ -285,7 +285,7 @@
         const d = (x - mx) * (x - mx) + (y - my) * (y - my);
         if (d < bd) { bd = d; best = i; }
       }
-      return bd < (this.scale * 0.42) * (this.scale * 0.42) ? best : -1;
+      return bd < (this.scale * 0.52) * (this.scale * 0.52) ? best : -1;
     }
 
     canAct() {

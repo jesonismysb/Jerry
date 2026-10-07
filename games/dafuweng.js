@@ -129,7 +129,7 @@
       wrap.className = 'glass-card panel-card p-3 sm:p-5';
       wrap.innerHTML = `
         <div class="flex flex-col lg:flex-row gap-4">
-          <div class="relative mx-auto w-full" style="max-width:540px">
+          <div class="board-box relative mx-auto w-full" style="max-width:540px">
             <canvas id="mf-canvas" class="block w-full rounded-xl"></canvas>
             <div id="mf-overlay" class="hidden absolute inset-0 rounded-xl items-center justify-center"
                  style="background:rgba(2,6,23,.72);backdrop-filter:blur(3px)">

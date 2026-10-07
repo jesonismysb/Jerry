@@ -101,7 +101,7 @@
       from { opacity: 0; transform: translateY(18px); }
       to   { opacity: 1; transform: translateY(0); }
     }
-    main > * { animation: fadeUp .6s ease both; }
+    main > * { animation: fadeUp .6s ease backwards; }
     @keyframes cardIn {
       from { opacity: 0; transform: translateY(14px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -142,6 +142,137 @@
     /* 等待联机时的呼吸点 */
     @keyframes pulseDot { 0%,100%{opacity:.3} 50%{opacity:1} }
     .pulse-dot { animation: pulseDot 1.2s infinite; }
+
+    /* ================================================================
+       移动端适配（仅布局/触控，不涉及任何游戏逻辑）
+       ================================================================ */
+    /* 所有棋盘：禁双击缩放延迟，保证点按即时响应 */
+    #game-mount canvas { touch-action: manipulation; }
+
+    /* 竖屏手机：收紧外层留白，棋盘宽度约占屏幕 92%，杜绝横向溢出 */
+    @media (max-width: 640px) and (orientation: portrait) {
+      body.in-game main { padding-left: 6px; padding-right: 6px; }
+      body.in-game #game-mount .glass-card { padding: 8px; border-radius: 1rem; }
+      body.in-game #view-game { gap: .5rem; }
+    }
+
+    /* 手机端通用：加大按钮触控尺寸、拉开按钮间距，防止误触 */
+    @media (max-width: 680px) {
+      body.in-game .btn-primary,
+      body.in-game .btn-ghost {
+        min-height: 44px;
+        padding: .72rem 1.1rem;
+        font-size: 13.5px;
+      }
+      /* 对局视图内的按钮行统一加大间距（原 gap-2 仅 8px） */
+      body.in-game #view-game .gap-2 { gap: .85rem; }
+      body.in-game #view-game .gap-1\.5 { gap: .7rem; }
+      /* 对局信息字号收敛，避免溢出换行 */
+      #game-sub { font-size: 11px; }
+    }
+
+    /* 棋盘高/宽比变量：横屏时按可用高度反推棋盘宽度，保证完整不裁切 */
+    #gk-boardwrap, #hb-boardwrap { --ar: 1; }
+    #xq-boardwrap { --ar: 1.124; }
+    #tq-boardwrap { --ar: 1.075; }
+    #ds-boardwrap { --ar: 1.286; }
+    .board-box { --ar: 1; }
+
+    /* ---------- 横屏（自动模式）：棋盘居左、信息与操作居右，紧凑顶栏 ---------- */
+    body.orient-land { --bh: calc(100vh - 78px); }
+    body.orient-land { --bh: calc(100dvh - 78px); }
+    body.orient-land header { display: none; }
+    body.orient-land main {
+      padding-top: .5rem !important;
+      padding-bottom: .5rem !important;
+      padding-left: 8px; padding-right: 8px;
+      max-width: 100%;
+    }
+    /* 对局顶行收紧，只留开关/退出与信息 */
+    body.orient-land .ogbar { margin-bottom: 6px; }
+    body.orient-land .ogbar .btn-ghost {
+      min-height: 34px; padding: .4rem .8rem; font-size: 12.5px;
+    }
+    body.orient-land #game-sub { font-size: 11px; }
+
+    /* 五子棋 / 象棋 / 黑白棋 / 斗兽棋 / 跳棋：卡片改为两列网格 */
+    body.orient-land #game-mount .glass-card:has(> [id$="-boardwrap"]) {
+      display: grid;
+      height: calc(100vh - 62px);
+      height: calc(100dvh - 62px);
+      grid-template-columns: minmax(0, 1fr) minmax(148px, 196px);
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: .55rem;
+      padding: 8px;
+    }
+    /* 状态信息 → 右上；按钮行 → 右下（先放通用 :last-child，棋盘规则在后保证胜出） */
+    body.orient-land #game-mount .glass-card:has(> [id$="-boardwrap"]) > :first-child {
+      grid-column: 2; grid-row: 1;
+    }
+    body.orient-land #game-mount .glass-card:has(> [id$="-boardwrap"]) > :last-child {
+      grid-column: 2; grid-row: 3;
+      justify-content: flex-start; margin-top: 0;
+    }
+    body.orient-land #game-mount [id$="-boardwrap"] {
+      grid-column: 1; grid-row: 1 / 4;
+      align-self: center; justify-self: center;
+      margin: 0; max-width: none;
+      width: min(100%, calc(var(--bh) / var(--ar, 1)));
+    }
+
+    /* 飞行棋 / 大富翁：内部容器横排，侧栏固定宽度，棋盘按高度收束 */
+    body.orient-land #game-mount .lg\:flex-row {
+      flex-direction: row !important;
+      align-items: stretch;
+      gap: .6rem;
+    }
+    body.orient-land #game-mount .lg\:w-60 {
+      width: 13rem; flex: none;
+    }
+    body.orient-land #game-mount .board-box {
+      max-width: none; margin: 0;
+      width: min(100%, var(--bh));
+      align-self: center;
+    }
+    body.orient-land #fx-log,
+    body.orient-land #mf-log {
+      max-height: calc(100vh - 250px);
+      max-height: calc(100dvh - 250px);
+      overflow-y: auto;
+    }
+
+    /* ---------- 「锁定竖屏」且物理横屏：舞台旋转 90°，内容保持竖排 ----------
+       外层负责旋转与宽高交换，内层正常布局；点击坐标经 getBoundingClientRect
+       自动换算，各游戏模块无需感知（参考 H5 视觉横屏通用两层结构） */
+    body.orient-rotate { overflow: hidden; height: 100vh; height: 100dvh; }
+    body.orient-rotate #orient-stage {
+      position: fixed; top: 0; left: 100vw; z-index: 60;
+      width: 100vh; width: 100dvh;
+      height: 100vw; height: 100dvw;
+      background: #0b1220;
+      transform: rotate(90deg);
+      transform-origin: top left;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 8px;
+    }
+    /* 反向横屏（设备顶部朝右）：逆时针旋转 */
+    body.orient-rotate.secondary #orient-stage {
+      top: 100vh; top: 100dvh; left: 0;
+      transform: rotate(-90deg);
+    }
+    /* 旋转舞台内：卡片收紧，棋盘按舞台纵轴（物理宽度 100vw）反推宽度，
+       预留 ogbar/状态/按钮行的纵向空间，保证整盘完整且无需滚动 */
+    body.orient-rotate #game-mount .glass-card { padding: 8px; }
+    body.orient-rotate [id$="-boardwrap"] {
+      max-width: none; margin-inline: auto;
+      width: min(100%, calc((100vw - 178px) / var(--ar, 1)));
+    }
+    /* 飞行棋 / 大富翁竖排时下方还有控制面板，多预留一些 */
+    body.orient-rotate .board-box {
+      max-width: none; margin-inline: auto;
+      width: min(100%, calc(100vw - 240px));
+    }
 
     #bg-overlay { transition: opacity .8s ease; }
   </style>
@@ -298,13 +429,19 @@
 
     <!-- ========== 视图三：对局 ========== -->
     <div id="view-game" class="hidden space-y-3">
-      <div class="flex items-center justify-between gap-2 flex-wrap">
-        <button id="game-leave" class="btn-ghost">
-          <i class="fa-solid fa-arrow-left-long"></i>退出对局
-        </button>
-        <p id="game-sub" class="text-[11.5px] text-slate-400"></p>
+      <!-- orient-stage：竖屏锁定且物理横屏时由该舞台整体旋转，内部布局保持正常 -->
+      <div id="orient-stage">
+        <div class="ogbar flex items-center justify-between gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <button id="btn-orient" class="btn-ghost !px-3" title="切换横竖屏模式"></button>
+            <button id="game-leave" class="btn-ghost !px-3">
+              <i class="fa-solid fa-arrow-left-long"></i>退出对局
+            </button>
+          </div>
+          <p id="game-sub" class="text-[11.5px] text-slate-400"></p>
+        </div>
+        <div id="game-mount"></div>
       </div>
-      <div id="game-mount"></div>
     </div>
 
     <footer class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));">
@@ -583,17 +720,20 @@
    * 进入对局
    * ================================================================== */
   async function startGame(seat, count) {
-    const isNet = lobbyCfg.mode === 'net';
-    const isUno = lobbyGame === 'uno';
-    const diffs = GAMES[lobbyGame].diffs || [[1, '简单'], [2, '中等'], [3, '困难']];
-    const diffRow = diffs.filter(d => Number(d[0]) === lobbyCfg.diff)[0];
-    const sub = document.getElementById('game-sub');
-    sub.innerHTML = isNet
-      ? '<i class="fa-solid fa-user-group mr-1"></i>联机对战' + (count ? ' · ' + count + ' 人局' : '') +
-        ' · 房间号 ' + (netRoom && netRoom.code ? netRoom.code : '手动直连')
-      : '<i class="fa-solid fa-robot mr-1"></i>AI ' + (diffRow ? diffRow[1] : '') +
-        (isUno ? ' · ' + (count || 2) + ' 人局' : '');
-    showView('game');
+      const isNet = lobbyCfg.mode === 'net';
+      const isUno = lobbyGame === 'uno';
+      const diffs = GAMES[lobbyGame].diffs || [[1, '简单'], [2, '中等'], [3, '困难']];
+      const diffRow = diffs.filter(d => Number(d[0]) === lobbyCfg.diff)[0];
+      const sub = document.getElementById('game-sub');
+      sub.innerHTML = isNet
+        ? '<i class="fa-solid fa-user-group mr-1"></i>联机对战' + (count ? ' · ' + count + ' 人局' : '') +
+          ' · 房间号 ' + (netRoom && netRoom.code ? netRoom.code : '手动直连')
+        : '<i class="fa-solid fa-robot mr-1"></i>AI ' + (diffRow ? diffRow[1] : '') +
+          (isUno ? ' · ' + (count || 2) + ' 人局' : '');
+      document.body.classList.add('in-game');
+      showView('game');
+      updateOrientBtn();
+      refreshOrient();
     const mount = document.getElementById('game-mount');
     mount.innerHTML = '<p class="text-center text-xs text-slate-500 py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在加载游戏资源…</p>';
     try {
@@ -618,6 +758,7 @@
       netRoom.destroy();
       netRoom = null;
     }
+    document.body.classList.remove('in-game', 'orient-land', 'orient-rotate', 'secondary');
     showView('hub');
   }
 
@@ -815,6 +956,59 @@
   }
 
   /* ==================================================================
+   * 横竖屏模式：「锁定竖屏 / 自动横竖屏」
+   *  - portrait（默认）：物理横屏时舞台整体旋转 90°，内容保持竖排
+   *  - auto：物理横屏时切换为横屏布局（棋盘居左、侧栏居右）
+   * 受移动端浏览器权限限制无法真正锁定系统方向，故采用视觉方案
+   * ================================================================== */
+  const ORIENT_KEY = 'nara_orient_v1';
+  let orientMode = localStorage.getItem(ORIENT_KEY) === 'auto' ? 'auto' : 'portrait';
+  let _orientSig = '';
+
+  function updateOrientBtn() {
+    const btn = document.getElementById('btn-orient');
+    if (!btn) return;
+    btn.innerHTML = orientMode === 'auto'
+      ? '<i class="fa-solid fa-rotate"></i>自动横竖屏'
+      : '<i class="fa-solid fa-lock"></i>锁定竖屏';
+    btn.title = orientMode === 'auto'
+      ? '当前：自动横竖屏，点击改为锁定竖屏'
+      : '当前：锁定竖屏，点击允许横屏游玩';
+  }
+
+  function toggleOrient() {
+    orientMode = orientMode === 'auto' ? 'portrait' : 'auto';
+    localStorage.setItem(ORIENT_KEY, orientMode);
+    updateOrientBtn();
+    refreshOrient();
+    showToast(orientMode === 'auto'
+      ? '已开启自动横竖屏，旋转手机即可横屏游玩'
+      : '已锁定竖屏，横屏时将保持竖排显示');
+  }
+
+  function refreshOrient() {
+    const inGame = document.body.classList.contains('in-game');
+    // 仅在矮宽的手机横屏下启用；桌面宽窗口保持原有响应式布局
+    const land = inGame && window.innerWidth > window.innerHeight && window.innerHeight <= 600;
+    const clsLand = land && orientMode === 'auto';
+    const clsRot = land && orientMode === 'portrait';
+    const sec = !!(window.screen && screen.orientation &&
+                   /landscape-secondary/.test(screen.orientation.type));
+
+    document.body.classList.toggle('orient-land', !!clsLand);
+    document.body.classList.toggle('orient-rotate', !!clsRot);
+    document.body.classList.toggle('secondary', !!clsRot && sec);
+
+    // 状态变化时：等布局落地后广播 resize，触发各游戏模块按新宽度重绘棋盘
+    const sig = clsLand + '|' + clsRot + '|' + sec;
+    if (sig !== _orientSig) {
+      _orientSig = sig;
+      requestAnimationFrame(() => requestAnimationFrame(() =>
+        window.dispatchEvent(new Event('resize'))));
+    }
+  }
+
+  /* ==================================================================
    * 事件绑定 & 初始化
    * ================================================================== */
   function bindEvents() {
@@ -829,6 +1023,10 @@
         if (confirm('确定退出对局吗？中途退出将被判定为离开。')) go();
       } else { go(); }
     });
+    document.getElementById('btn-orient').addEventListener('click', toggleOrient);
+    // 物理旋转手机 / 窗口尺寸变化：重新评估方向并按需重绘
+    window.addEventListener('resize', refreshOrient);
+    window.addEventListener('orientationchange', () => setTimeout(refreshOrient, 120));
 
     document.querySelectorAll('[data-mode]').forEach(b => {
       b.addEventListener('click', () => {
