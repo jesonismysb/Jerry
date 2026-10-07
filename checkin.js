@@ -17,11 +17,11 @@
   /* 游戏解锁积分地图（UNO 保持原 150；新增游戏按定价） */
   var GAME_COSTS = {
     uno: 150,
-    tiaoqi: 200,     // 跳棋
-    doushou: 180,    // 斗兽棋
-    feixing: 250,    // 飞行棋
-    heibai: 160,     // 黑白棋
-    dafuweng: 300    // 简易大富翁
+    tiaoqi: 200,      // 跳棋
+    doushou: 180,     // 斗兽棋
+    heibai: 160,      // 黑白棋
+    undercover: 250,  // 谁是卧底
+    langren: 300      // 狼人杀
   };
 
   /* ---------------- 日期工具（本地时区） ---------------- */
@@ -370,9 +370,9 @@
     uno:      { name: 'UNO 卡牌',   icon: 'fa-layer-group',  color: 'bg-emerald-400/10 text-emerald-300', tag: 'AI 简单/普通 · WebRTC 联机 · 完整规则' },
     tiaoqi:   { name: '跳棋',       icon: 'fa-circle-nodes', color: 'bg-sky-400/10 text-sky-300',        tag: 'AI 简单/普通/困难 · WebRTC 联机' },
     doushou:  { name: '斗兽棋',     icon: 'fa-paw',          color: 'bg-orange-400/10 text-orange-300',   tag: 'AI 简单/普通/困难 · WebRTC 联机' },
-    feixing:  { name: '飞行棋',     icon: 'fa-plane',        color: 'bg-fuchsia-400/10 text-fuchsia-300', tag: '2-6 人 · AI/联机 · 欢乐骰运' },
+    undercover: { name: '谁是卧底', icon: 'fa-user-secret',  color: 'bg-fuchsia-400/10 text-fuchsia-300', tag: '4-10 人 · 好友联机 · 语言推理' },
     heibai:   { name: '黑白棋',     icon: 'fa-circle-half-stroke', color: 'bg-teal-400/10 text-teal-300', tag: 'AI 简单/普通/困难 · WebRTC 联机' },
-    dafuweng: { name: '简易大富翁', icon: 'fa-coins',        color: 'bg-yellow-400/10 text-yellow-300',   tag: '2-4 人 · AI/联机 · 买地收租' }
+    langren:  { name: '狼人杀',     icon: 'fa-moon',         color: 'bg-violet-400/10 text-violet-300',   tag: '8-10 人 · 好友联机 · 夜昼博弈' }
   };
   var pendingGame = 'uno';
 

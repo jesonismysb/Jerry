@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="description" content="奈良的棋类桌游厅 - 五子棋、中国象棋、UNO卡牌，支持AI单机与网页联机对战" />
+  <meta name="description" content="奈良的棋类桌游厅 - 五子棋、中国象棋、UNO卡牌、谁是卧底、狼人杀，支持AI单机与网页联机对战" />
   <meta name="theme-color" content="#0b1220" />
   <title>棋类桌游 · 奈良</title>
 
@@ -156,8 +156,7 @@
       body.in-game #view-game { gap: .5rem; }
       /* 显式兜底：棋盘容器永远不超过 100vw-28px（main 12 + card 16），
          即使日志/长按钮等子元素试图撑宽卡片，棋盘也不会溢出屏幕；mx-auto 居中 */
-      body.in-game #game-mount [id$="-boardwrap"],
-      body.in-game #game-mount .board-box {
+      body.in-game #game-mount [id$="-boardwrap"] {
         width: min(100%, calc(100vw - 28px));
         margin-inline: auto;
       }
@@ -183,7 +182,6 @@
     #xq-boardwrap { --ar: 1.111; }
     #tq-boardwrap { --ar: 1.075; }
     #ds-boardwrap { --ar: 1.286; }
-    .board-box { --ar: 1; }
 
     /* ---------- 横屏（自动模式）：棋盘居左、信息与操作居右，紧凑顶栏 ---------- */
     body.orient-land { --bh: calc(100vh - 78px); }
@@ -228,27 +226,6 @@
       width: min(100%, calc(var(--bh) / var(--ar, 1)), calc(100vw - 216px));
     }
 
-    /* 飞行棋 / 大富翁：内部容器横排，侧栏固定宽度，棋盘按高度收束 */
-    body.orient-land #game-mount .lg\:flex-row {
-      flex-direction: row !important;
-      align-items: stretch;
-      gap: .6rem;
-    }
-    body.orient-land #game-mount .lg\:w-60 {
-      width: 13rem; flex: none;
-    }
-    body.orient-land #game-mount .board-box {
-      max-width: none; margin: 0;
-      width: min(100%, var(--bh), calc(100vw - 232px));
-      align-self: center;
-    }
-    body.orient-land #fx-log,
-    body.orient-land #mf-log {
-      max-height: calc(100vh - 250px);
-      max-height: calc(100dvh - 250px);
-      overflow-y: auto;
-    }
-
     /* ---------- 「锁定竖屏」且物理横屏：舞台旋转 90°，内容保持竖排 ----------
        外层以视口中心为锚点负责旋转与宽高交换（任何 vw/vh、dvw/dvh 差异下
        都严格居中、不偏向一侧）；内层正常布局；点击坐标经 getBoundingClientRect
@@ -278,11 +255,6 @@
     body.orient-rotate [id$="-boardwrap"] {
       max-width: none; margin-inline: auto;
       width: min(100%, calc((100vw - 178px) / var(--ar, 1)));
-    }
-    /* 飞行棋 / 大富翁竖排时下方还有控制面板，多预留一些 */
-    body.orient-rotate .board-box {
-      max-width: none; margin-inline: auto;
-      width: min(100%, calc(100vw - 240px));
     }
 
     #bg-overlay { transition: opacity .8s ease; }
@@ -323,7 +295,7 @@
     <div id="view-hub">
       <h2 class="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2 px-1">
         <span class="w-1 h-4 rounded-full bg-gradient-to-b from-amber-300 to-rose-500"></span>
-        选择一款游戏，支持 AI 单机与好友联机
+        选择一款游戏 · 棋类支持 AI 单机，派对游戏联机开黑
       </h2>
       <div id="hub-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4"></div>
       <p class="text-[11.5px] text-slate-500 mt-4 px-1 leading-relaxed">
@@ -348,7 +320,7 @@
         </div>
 
         <!-- 模式切换 -->
-        <div class="flex gap-2 mt-5">
+        <div id="mode-row" class="flex gap-2 mt-5">
           <button class="seg-btn on" data-mode="ai" style="max-width:160px"><i class="fa-solid fa-robot mr-1"></i>AI 单机对战</button>
           <button class="seg-btn" data-mode="net" style="max-width:160px"><i class="fa-solid fa-user-group mr-1"></i>联机对战</button>
         </div>
@@ -374,13 +346,18 @@
 
         <!-- 联机设置 -->
         <div id="pane-net" class="mt-5 hidden space-y-4">
-          <div class="flex gap-2">
+          <div id="nettab-row" class="flex gap-2">
             <button class="seg-btn on" data-nettab="auto" style="max-width:200px"><i class="fa-solid fa-bolt mr-1"></i>房间号匹配</button>
             <button class="seg-btn" data-nettab="manual" style="max-width:200px"><i class="fa-solid fa-plug mr-1"></i>手动信令</button>
           </div>
 
           <!-- 房间号匹配 -->
           <div id="net-auto" class="space-y-4">
+            <!-- 纯联机游戏（谁是卧底 / 狼人杀）：房主选择本局人数 -->
+            <div id="count-row-net" class="hidden">
+              <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-users text-cyan-300/80 mr-1"></i>本局人数（无 AI，房主创建房间后达到该人数即可开局）</p>
+              <div class="flex gap-2 flex-wrap" id="count-segs-net"></div>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div class="rounded-xl border border-white/10 bg-white/5 p-4">
                 <p class="text-xs text-slate-300 font-medium mb-1"><i class="fa-solid fa-house-chimney text-cyan-300 mr-1"></i>创建房间</p>
@@ -540,15 +517,17 @@
         'AI 分为简单 / 普通 / 困难三档；联机模式房主执下方一方，WebRTC 点对点对战。'
       ]
     },
-    feixing: {
-      name: '飞行棋', icon: 'fa-solid fa-plane', color: 'bg-fuchsia-400/10 text-fuchsia-300',
-      seats: null, multi: true, minN: 2, maxN: 6, peers: 5,
-      desc: '2-6 人骰运竞速',
+    undercover: {
+      name: '谁是卧底', icon: 'fa-solid fa-user-secret', color: 'bg-fuchsia-400/10 text-fuchsia-300',
+      seats: null, multi: true, netOnly: true, minN: 4, maxN: 10, peers: 9,
+      desc: '4-10 人联机语言推理',
       rules: [
-        '2-6 人各驾驶 4 架飞机停在停机坪。必须掷出 6 点才能让一架飞机起飞，起飞后再掷一次决定前进步数。',
-        '每掷出 6 点可再掷一次；连续三次掷出 6，则当轮行动作废。走到与自己颜色相同的格子时，可再向前跳 4 格。',
-        '走到终点时必须恰好点数进入，点数超出则多退少补（在最后一段上折返）；把对方飞机撞回停机坪时，己方再进一格。',
-        '最先让 4 架飞机全部到达终点者获胜。AI 分为简单 / 普通 / 困难；联机由房主统一掷骰裁判，支持 2-6 人。'
+        '纯联机派对游戏（无 AI）：房主创建房间，邀请 3-9 位好友加入，可自选 4-10 人开局，人齐后房主点击开始。',
+        '开局系统自动发词：平民拿到平民词，卧底拿到相近的卧底词（4-7 人局 1 名卧底，8-10 人局 2 名卧底），身份仅自己可见。',
+        '按座位轮流描述自己的词：只能描述词的含义，不能直接说出词语本身。轮到谁发言，谁在聊天框打字描述后点击「我说完了」。',
+        '每轮描述结束后全员投票（不能投自己），得票最多者出局并公开身份；平票则无人出局，进入下一轮描述。',
+        '卧底被全部投出局，平民阵营获胜；卧底人数追平平民时，卧底阵营获胜。',
+        '房间内置聊天框，全员随时交流；出局玩家可继续围观聊天。点击顶部「我的词语」可显示 / 隐藏自己的词。'
       ]
     },
     heibai: {
@@ -562,15 +541,17 @@
         '角落与边角价值极高，困难 AI 会做多步搜索并评估行动力，请谨慎弃角。联机模式房主执黑先行。'
       ]
     },
-    dafuweng: {
-      name: '简易大富翁', icon: 'fa-solid fa-coins', color: 'bg-yellow-400/10 text-yellow-300',
-      seats: null, multi: true, minN: 2, maxN: 4, peers: 3,
-      desc: '2-4 人买地收租',
+    langren: {
+      name: '狼人杀', icon: 'fa-solid fa-moon', color: 'bg-violet-400/10 text-violet-300',
+      seats: null, multi: true, netOnly: true, minN: 8, maxN: 10, peers: 9,
+      desc: '8-10 人联机夜昼博弈',
       rules: [
-        '2-4 人开局，每人初始持有 1500 金币，轮流掷骰沿棋盘环行。',
-        '停到无主地产时可购买；其他玩家停在你的地产上必须缴纳租金。再次停到自己的地产可半价升级，最多升到 3 级，租金随等级翻倍。',
-        '停到「机会」格随机获得奖励或损失；停到「税金」格需缴纳金币。现金不足以支付即破产退出。',
-        '最后未破产者获胜；若 40 轮后无人破产，则持有金币最多者获胜。AI 分为简单 / 普通 / 困难；联机由房主统一裁判。'
+        '纯联机派对游戏（无 AI）：房主创建房间，邀请 7-9 位好友加入，可自选 8-10 人开局，人齐后房主点击开始。',
+        '角色随人数自动分配：8-9 人局 2 狼人；10 人局 3 狼人；每局必有预言家与女巫各 1 名，其余为村民。身份仅自己可见。',
+        '夜晚流程：狼人共同选择一名玩家猎杀 → 预言家查验一名玩家阵营 → 女巫决定使用解药 / 毒药（每晚限一瓶，解药未用时可知遇害者）。',
+        '白天流程：公布昨夜出局者及身份，从死者下一位开始轮流打字发言，随后全员投票放逐一人（平票则无人出局）并公开身份。',
+        '所有狼人被消灭，好人阵营获胜；狼人数量追平好人时，狼人阵营获胜。',
+        '夜晚全员闭眼禁言，仅存活狼人可在狼频道密聊商议；白天聊天框全员可见；女巫用药前可反复斟酌，点击「确认用药」才生效。'
       ]
     }
   };
@@ -615,7 +596,7 @@
   }
 
   const scriptCache = {};
-  const SCRIPT_VER = '20261007';
+  const SCRIPT_VER = '20261007b';
   function loadScript(src) {
     if (scriptCache[src]) return scriptCache[src];
     scriptCache[src] = new Promise((resolve, reject) => {
@@ -643,7 +624,10 @@
       const g = GAMES[id];
       // 锁属性：UNO 沿用旧 data-uno-lock；其他付费游戏用通用 data-nc-lock
       const lockAttr = id === 'uno' ? 'data-uno-lock'
-        : 'tiaoqi,doushou,feixing,heibai,dafuweng'.split(',').includes(id) ? `data-nc-lock="${id}"` : '';
+        : 'tiaoqi,doushou,heibai,undercover,langren'.split(',').includes(id) ? `data-nc-lock="${id}"` : '';
+      const playTag = g.netOnly
+        ? '<i class="fa-solid fa-user-group mr-0.5"></i>仅联机 · 无AI'
+        : '<i class="fa-solid fa-robot mr-0.5"></i>AI · <i class="fa-solid fa-user-group mr-0.5"></i>联机';
       return `
         <button data-g="${id}" ${lockAttr}
                 class="entry-card glass-card p-5 flex flex-col items-center text-center gap-2.5"
@@ -653,7 +637,7 @@
           </span>
           <span class="text-sm font-medium text-slate-100">${g.name}</span>
           <span class="text-[11px] text-slate-500 leading-snug">${g.desc}</span>
-          <span class="text-[10.5px] text-cyan-300/70 mt-0.5"><i class="fa-solid fa-robot mr-0.5"></i>AI · <i class="fa-solid fa-user-group mr-0.5"></i>联机</span>
+          <span class="text-[10.5px] text-cyan-300/70 mt-0.5">${playTag}</span>
         </button>`;
     }).join('');
     grid.querySelectorAll('button').forEach(b => {
@@ -671,19 +655,25 @@
   function openLobby(gameId, presetMode) {
     lobbyGame = gameId;
     const g = GAMES[gameId];
-    const defaultCount = g.multi ? Math.min(4, g.maxN) : 2;
-    lobbyCfg = { mode: presetMode || 'ai', diff: 2, seat: 0, count: defaultCount, nettab: 'auto', side: 'host' };
+    const defaultCount = g.netOnly ? g.minN : (g.multi ? Math.min(4, g.maxN) : 2);
+    lobbyCfg = { mode: presetMode || (g.netOnly ? 'net' : 'ai'), diff: 2, seat: 0, count: defaultCount, nettab: 'auto', side: 'host' };
     document.getElementById('lobby-title').innerHTML =
       `<i class="${g.icon} ${g.color.split(' ')[1]}"></i>${g.name}`;
+
+    // 纯联机游戏（谁是卧底 / 狼人杀）：隐藏 AI/联机 模式切换
+    document.getElementById('mode-row').classList.toggle('hidden', !!g.netOnly);
+    // 手动信令仅支持两人对局，纯联机多人游戏不提供
+    document.getElementById('nettab-row').classList.toggle('hidden', !!g.netOnly);
+    syncLobbyUI();
 
     // 难度段（UNO 为 简单/普通 两档，其余游戏三档）
     const diffs = g.diffs || [[1, '简单'], [2, '中等'], [3, '困难']];
     document.getElementById('diff-segs').innerHTML = diffs.map(d =>
       `<button class="seg-btn ${Number(d[0]) === lobbyCfg.diff ? 'on' : ''}" data-diff="${d[0]}">${d[1]}</button>`).join('');
 
-    // 玩家数量段（多人游戏：UNO 2-6、飞行棋 2-6、大富翁 2-4）
+    // 玩家数量段（AI 面板：UNO 2-6）
     const countRow = document.getElementById('count-row');
-    if (g.multi) {
+    if (g.multi && !g.netOnly) {
       countRow.classList.remove('hidden');
       const opts = [];
       for (let k = g.minN; k <= g.maxN; k++) opts.push(k);
@@ -691,6 +681,18 @@
         `<button class="seg-btn ${k === lobbyCfg.count ? 'on' : ''}" data-count="${k}">${k} 人</button>`).join('');
     } else {
       countRow.classList.add('hidden');
+    }
+
+    // 纯联机游戏：联机面板内的人数选择（谁是卧底 4-10、狼人杀 8-10）
+    const countRowNet = document.getElementById('count-row-net');
+    if (g.netOnly) {
+      countRowNet.classList.remove('hidden');
+      const optsN = [];
+      for (let k = g.minN; k <= g.maxN; k++) optsN.push(k);
+      document.getElementById('count-segs-net').innerHTML = optsN.map(k =>
+        `<button class="seg-btn ${k === lobbyCfg.count ? 'on' : ''}" data-count="${k}">${k} 人</button>`).join('');
+    } else {
+      countRowNet.classList.add('hidden');
     }
 
     // 座位段（UNO 无）
@@ -782,6 +784,7 @@
     const box = document.getElementById('room-status');
     box.classList.add('hidden');
     box.innerHTML = '';
+    window.__renderRoomPanel = null;
     if (netRoom) { netRoom.destroy(); netRoom = null; }
   }
 
@@ -808,12 +811,16 @@
       wireRoomClose();
       const code = await netRoom.host();
       if (isMulti) {
-        // 多人房间（UNO / 飞行棋 / 大富翁）：房主等待玩家加入后手动开局
+        // 多人房间（UNO / 谁是卧底 / 狼人杀）：房主等待玩家加入后手动开局
         const renderRoom = () => {
           const n = 1 + netRoom.peerCount();
+          const needN = gm.netOnly ? Math.max(gm.minN, lobbyCfg.count) : gm.minN;
           const names = ['房主（我）'];
           for (let i = 2; i <= n; i++) names.push('玩家 ' + i);
-          const canStart = n >= gm.minN;
+          const canStart = n >= needN;
+          const hintTxt = gm.netOnly
+            ? `本局 ${needN} 人（可在上方人数栏调整），当前 ${n} 人${canStart ? '，可以开始' : '，人数不足无法开局'}`
+            : `${gm.minN}-${gm.maxN} 人开局，人齐后点击开始；开始后房间将锁定`;
           setRoomStatus(`
             <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>房间已创建，邀请好友加入（${n}/${gm.maxN}）</p>
             <p class="text-3xl font-mono font-bold tracking-[0.35em] text-cyan-200 my-2">${code}</p>
@@ -822,16 +829,17 @@
               ${names.map(x => `<span class="text-[11px] px-2.5 py-1 rounded-full bg-cyan-400/10 border border-cyan-300/25 text-cyan-100"><i class="fa-solid fa-user mr-1"></i>${x}</span>`).join('')}
             </div>
             <button id="btn-room-start" class="btn-primary" ${canStart ? '' : 'disabled'}><i class="fa-solid fa-play"></i>开始对局（${n} 人）</button>
-            <p class="text-[11px] text-slate-500 mt-2">${gm.minN}-${gm.maxN} 人开局，人齐后点击开始；开始后房间将锁定</p>`);
+            <p class="text-[11px] text-slate-500 mt-2">${hintTxt}</p>`);
           const btn = document.getElementById('btn-room-start');
           if (btn) btn.addEventListener('click', () => {
             const total = 1 + netRoom.peerCount();
-            if (total < gm.minN) return;
+            if (total < needN) return;
             netRoom.lock();
             for (let s = 1; s <= netRoom.maxPeers; s++) netRoom.sendTo(s, { t: 'start', seat: s, n: total });
             startGame(0, total);
           });
         };
+        window.__renderRoomPanel = renderRoom;
         renderRoom();
         netRoom.on('join', renderRoom);
         netRoom.on('leave', renderRoom);
@@ -1055,7 +1063,14 @@
       const sb = e.target.closest('[data-seat]');
       if (sb) { lobbyCfg.seat = Number(sb.dataset.seat); syncLobbyUI(); return; }
       const cb = e.target.closest('[data-count]');
-      if (cb) { lobbyCfg.count = Number(cb.dataset.count); syncLobbyUI(); }
+      if (cb) {
+        lobbyCfg.count = Number(cb.dataset.count);
+        syncLobbyUI();
+        // 纯联机游戏建房等待中：人数选择改变实时刷新开局按钮状态
+        if (netRoom && lobbyGame && GAMES[lobbyGame].netOnly && window.__renderRoomPanel) {
+          window.__renderRoomPanel();
+        }
+      }
     });
     document.querySelectorAll('[data-nettab]').forEach(b => {
       b.addEventListener('click', () => {
