@@ -353,6 +353,8 @@
     .quiz-opt.wrong { border-color: rgba(248, 113, 113, .7); background: rgba(248, 113, 113, .12); }
     .quiz-opt.wrong .opt-key { background: rgba(248, 113, 113, .2); color: #f87171; }
     .quiz-opt.disabled { pointer-events: none; }
+    .quiz-opt.sel { border-color: rgba(103,232,249,.7); background: rgba(103,232,249,.1); }
+    .quiz-opt.sel .opt-key { background: rgba(103,232,249,.2); color:#67e8f9; }
     .quiz-explain {
       border-left: 3px solid rgba(103, 232, 249, .5);
       background: var(--c-soft); border-radius: .6rem;
@@ -366,6 +368,64 @@
       background: var(--c-soft);
       border-radius: .95rem; padding: .85rem .95rem; margin-bottom: .7rem;
     }
+
+    /* ==================== 随机组卷 ==================== */
+    .exam-sel-book {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .6rem .8rem; border-radius: .8rem;
+      border: 1px solid var(--c-border); background: var(--c-soft);
+      font-size: 13px; color: var(--c-main); text-align: left;
+      transition: all .2s ease;
+    }
+    .exam-sel-book:hover { border-color: rgba(103,232,249,.4); }
+    .exam-sel-book.on { border-color: rgba(103,232,249,.6); background: rgba(103,232,249,.1); color:#a5f3fc; }
+    .exam-ch-chip {
+      font-size: 11.5px; line-height: 1.4;
+      padding: .3rem .6rem; border-radius: .6rem;
+      border: 1px solid var(--c-border); background: var(--c-soft);
+      color: var(--c-sub); transition: all .18s ease;
+    }
+    .exam-ch-chip:hover { border-color: rgba(103,232,249,.4); color:#a5f3fc; }
+    .exam-ch-chip.on { border-color: rgba(103,232,249,.6); background: rgba(103,232,249,.12); color:#67e8f9; }
+    .btn-soft.on, .exam-diff-chip.on, .exam-min-chip.on {
+      border-color: rgba(103,232,249,.6); color:#67e8f9; background: rgba(103,232,249,.08);
+    }
+    .exam-step-btn {
+      width: 30px; height: 30px; border-radius: .55rem; flex-shrink: 0;
+      border: 1px solid var(--c-border); background: var(--c-soft);
+      color: var(--c-main); font-size: 16px; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .exam-step-btn:hover { border-color: rgba(103,232,249,.5); color:#67e8f9; }
+    .exam-step-n { min-width: 40px; text-align: center; font-size: 15px; font-weight: 700; color: var(--c-main); }
+    .exam-nav-cell {
+      width: 31px; height: 31px; border-radius: .5rem; font-size: 11.5px;
+      border: 1px solid var(--c-border); background: var(--c-soft); color: var(--c-sub);
+      display:flex; align-items:center; justify-content:center; transition: all .15s ease;
+    }
+    .exam-nav-cell:hover { border-color: rgba(103,232,249,.5); color:#67e8f9; }
+    .exam-nav-cell.done { background: rgba(74,222,128,.16); border-color: rgba(74,222,128,.55); color:#4ade80; }
+    .exam-nav-cell.marked { border-color: rgba(251,191,36,.8); color:#fbbf24; }
+    .exam-nav-cell.done.marked { background: rgba(251,191,36,.18); border-color: rgba(251,191,36,.85); color:#fbbf24; }
+    .exam-nav-cell.current { box-shadow: 0 0 0 2px rgba(103,232,249,.75); color:#67e8f9; }
+    .exam-review-item {
+      border: 1px solid var(--c-border); background: var(--c-soft);
+      border-radius: .95rem; padding: .9rem .95rem; margin-bottom: .7rem;
+    }
+    .exam-opt-mini {
+      display:flex; align-items:flex-start; gap:.5rem;
+      font-size: 12.5px; line-height: 1.7; padding: .35rem .55rem;
+      border-radius: .55rem; margin-top: .25rem; color: var(--c-sub);
+    }
+    .exam-opt-mini.ok  { background: rgba(74,222,128,.12); color:#4ade80; }
+    .exam-opt-mini.bad { background: rgba(248,113,113,.12); color:#f87171; }
+    .exam-opt-mini .ek {
+      width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+      background: var(--c-input); font-size: 10.5px;
+      display:flex; align-items:center; justify-content:center; margin-top: 1px;
+    }
+    .exam-opt-mini.ok .ek  { background: rgba(74,222,128,.22); color:#4ade80; }
+    .exam-opt-mini.bad .ek { background: rgba(248,113,113,.22); color:#f87171; }
 
     /* ==================== Toast ==================== */
     #toast {
@@ -480,6 +540,20 @@
       </div>
     </section>
 
+    <!-- 随机组卷入口 -->
+    <section class="glass-card p-4 sm:p-5 fade-item" style="border-color:rgba(103,232,249,.30)">
+      <div class="flex items-center gap-3.5 flex-wrap">
+        <div class="w-11 h-11 rounded-xl bg-cyan-400/15 text-cyan-300 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-shuffle"></i>
+        </div>
+        <div class="min-w-[200px] flex-1">
+          <h3 class="text-sm sm:text-[15px] font-bold t-main">随机组卷 · 跨教材模拟考试</h3>
+          <p class="text-[12px] t-sub mt-0.5 leading-relaxed">自由勾选 6 本教材的章节，自定义单选/判断题数量与难度，支持倒计时、标记不会、自动批改与错题收录</p>
+        </div>
+        <button id="btn-exam" class="btn-quiz shrink-0"><i class="fa-solid fa-file-pen"></i>开始组卷</button>
+      </div>
+    </section>
+
     <!-- 桌面双栏：左侧教材导航 + 右侧章节 -->
     <div class="grid lg:grid-cols-[280px_minmax(0,1fr)] gap-5 items-start">
 
@@ -524,6 +598,20 @@
         </div>
       </div>
       <div id="wrong-list"></div>
+    </div>
+
+    <!-- ==================== 视图：随机组卷 ==================== -->
+    <div id="view-exam" class="hidden space-y-4">
+      <div class="glass-card p-4 sm:p-5">
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="exam-back" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回书架</button>
+          <h2 class="text-sm sm:text-base font-bold t-main"><i class="fa-solid fa-shuffle text-cyan-300 mr-1.5"></i>随机组卷</h2>
+          <span id="exam-timer" class="ml-auto text-xs t-sub shrink-0"></span>
+          <span id="exam-progress" class="text-xs t-sub shrink-0"></span>
+        </div>
+        <div class="quiz-bar mt-3"><div id="exam-bar-fill"></div></div>
+      </div>
+      <div id="exam-body"></div>
     </div>
 
     <!-- 页脚 -->
@@ -5858,11 +5946,12 @@
     return arr;
   }
 
-  /** 三视图切换：main / quiz / wrong */
+  /** 视图切换：main / quiz / wrong / exam */
   function showView(name) {
     document.getElementById('view-main').classList.toggle('hidden', name !== 'main');
     document.getElementById('view-quiz').classList.toggle('hidden', name !== 'quiz');
     document.getElementById('view-wrong').classList.toggle('hidden', name !== 'wrong');
+    document.getElementById('view-exam').classList.toggle('hidden', name !== 'exam');
     document.getElementById('drawer-fab').style.display = name === 'main' ? '' : 'none';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -6241,9 +6330,523 @@
     });
   }
 
+  /* ==================================================================
+   *  随机组卷（跨教材模拟考试）
+   * ================================================================== */
+  let examSetup = null;
+  let examState = null;
+
+  /** 组卷入口 */
+  function openExamSetup() {
+    if (!examSetup) {
+      examSetup = {
+        books: [], chapters: {},
+        nChoice: 20, nJudge: 10,
+        diffs: ['base', 'mid', 'high'],
+        countdown: false, minutes: 60
+      };
+    }
+    examState = null;
+    renderExamSetup();
+    showView('exam');
+  }
+
+  /** 计算当前设置下的题池（带书籍章节归属信息） */
+  function examPool(cfg) {
+    const choice = [], judge = [];
+    cfg.books.forEach(bid => {
+      const book = BOOKS.find(b => b.id === bid);
+      if (!book) return;
+      (cfg.chapters[bid] || []).forEach(ci => {
+        const ch = book.chapters[ci];
+        (ch.questions || []).forEach((q, i) => {
+          if (!cfg.diffs.includes(q.difficulty || 'base')) return;
+          const item = Object.assign({}, q, {
+            _i: i, _bookId: bid, _chIdx: ci,
+            _bookTitle: book.title, _chTitle: ch.title
+          });
+          (q.type === 'judge' ? judge : choice).push(item);
+        });
+      });
+    });
+    return { choice, judge };
+  }
+
+  /** 数量步进器卡片 */
+  function examStepper(kind, label, n, avail) {
+    return `
+      <div class="rounded-xl p-3 flex items-center gap-2.5" style="background:var(--c-input);border:1px solid var(--c-border)">
+        <span class="type-badge ${kind === 'judge' ? 'judge' : ''}">${label}</span>
+        <button class="exam-step-btn" data-step-kind="${kind}" data-step-d="-1">−</button>
+        <span class="exam-step-n">${n}</span>
+        <button class="exam-step-btn" data-step-kind="${kind}" data-step-d="1">＋</button>
+        <span class="ml-auto text-[11.5px] t-sub">可用 ${avail} 题</span>
+      </div>`;
+  }
+
+  /** 章节短名（去掉章/单元前缀，保留 Unit 写法） */
+  function examChShort(t) {
+    return t.replace(/^第.+?[章单元]　/, '');
+  }
+
+  /** 渲染组卷设置 */
+  function renderExamSetup() {
+    const cfg = examSetup;
+    const pool = examPool(cfg);
+    const nc = Math.min(cfg.nChoice, pool.choice.length);
+    const nj = Math.min(cfg.nJudge, pool.judge.length);
+    const total = nc + nj;
+
+    document.getElementById('exam-progress').textContent = '组卷设置';
+    document.getElementById('exam-timer').textContent = '';
+    document.getElementById('exam-bar-fill').style.width = '0%';
+
+    document.getElementById('exam-body').innerHTML = `
+      <div class="glass-card p-4 sm:p-6 fade-item space-y-5">
+
+        <!-- ① 书本 -->
+        <div>
+          <p class="blk-title"><i class="fa-solid fa-book i-know"></i>① 选择教材（可多选，跨书组卷）</p>
+          <div class="grid sm:grid-cols-2 gap-2 mt-1">
+            ${BOOKS.map(b => {
+              const on = cfg.books.includes(b.id);
+              return `
+              <button class="exam-sel-book ${on ? 'on' : ''}" data-book="${b.id}">
+                <span class="w-2.5 h-2.5 rounded-full ${b.cover}"></span>
+                <span>${esc(b.title)}</span>
+                <span class="ml-auto text-[10.5px] opacity-70">${b.chapters.length} 章</span>
+              </button>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <!-- ② 章节 -->
+        <div>
+          <p class="blk-title"><i class="fa-solid fa-list-check i-know"></i>② 选择章节</p>
+          ${cfg.books.length ? `
+          <div class="space-y-3 mt-1">
+            ${cfg.books.map(bid => {
+              const book = BOOKS.find(b => b.id === bid);
+              const sel = cfg.chapters[bid] || [];
+              const all = sel.length === book.chapters.length;
+              return `
+              <div class="rounded-xl p-3" style="background:var(--c-input);border:1px solid var(--c-border)">
+                <div class="flex items-center gap-2 mb-2 flex-wrap">
+                  <p class="text-[12.5px] font-semibold t-main">${esc(book.title)}</p>
+                  <span class="text-[11px] t-sub ml-auto">已选 ${sel.length}/${book.chapters.length}</span>
+                  <button class="btn-soft !py-0.5 !px-2.5 !text-[11px]" data-all="${bid}">${all ? '清空' : '全选'}</button>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                  ${book.chapters.map((c, ci) => {
+                    const on = sel.includes(ci);
+                    const short = examChShort(c.title);
+                    return `<button class="exam-ch-chip ${on ? 'on' : ''}" data-book="${bid}" data-ch="${ci}" title="${esc(c.title)}">${esc(short)}</button>`;
+                  }).join('')}
+                </div>
+              </div>`;
+            }).join('')}
+          </div>` : `
+          <div class="rounded-xl p-4 text-center text-[12.5px] t-sub" style="background:var(--c-soft);border:1px dashed var(--c-border)">先勾选上方教材，再选择出题章节</div>`}
+        </div>
+
+        <!-- ③ 数量 -->
+        <div>
+          <p class="blk-title"><i class="fa-solid fa-hashtag i-know"></i>③ 抽题数量（两种题型分别设置）</p>
+          <div class="grid sm:grid-cols-2 gap-3 mt-1">
+            ${examStepper('choice', '单选题', cfg.nChoice, pool.choice.length)}
+            ${examStepper('judge', '判断题', cfg.nJudge, pool.judge.length)}
+          </div>
+          <p class="text-[11px] t-sub mt-2">题量超出题库容量时，按实际可抽数量出题；不足部分不补充其他题型</p>
+        </div>
+
+        <!-- ④ 难度 -->
+        <div>
+          <p class="blk-title"><i class="fa-solid fa-signal i-know"></i>④ 难度筛选（可多选，三项全选即混合抽取）</p>
+          <div class="flex flex-wrap gap-2 mt-1">
+            ${[['base', '基础题'], ['mid', '中档题'], ['high', '拔高题']].map(d =>
+              `<button class="btn-soft exam-diff-chip ${cfg.diffs.includes(d[0]) ? 'on' : ''}" data-diff="${d[0]}">${d[1]}</button>`).join('')}
+          </div>
+        </div>
+
+        <!-- ⑤ 倒计时 -->
+        <div>
+          <p class="blk-title"><i class="fa-solid fa-hourglass-half i-know"></i>⑤ 考试倒计时（可选）</p>
+          <div class="flex flex-wrap items-center gap-2 mt-1">
+            <button class="btn-soft ${!cfg.countdown ? 'on' : ''}" data-cd="off">不开启（仅正计时）</button>
+            <button class="btn-soft ${cfg.countdown ? 'on' : ''}" data-cd="on">开启倒计时</button>
+            ${cfg.countdown ? [30, 45, 60, 90, 120].map(m =>
+              `<button class="btn-soft exam-min-chip ${cfg.minutes === m ? 'on' : ''}" data-min="${m}">${m} 分钟</button>`).join('') : ''}
+          </div>
+          ${cfg.countdown ? '<p class="text-[11px] t-sub mt-2">倒计时结束将自动交卷，未作答题目按答错计</p>' : ''}
+        </div>
+
+        <!-- 生成 -->
+        <div class="flex items-center gap-3 flex-wrap pt-1 border-t" style="border-color:var(--c-border)">
+          <p class="text-[12.5px] t-sub pt-3">本次试卷共
+            <span class="text-cyan-300 font-bold">${total}</span> 道题
+            （单选 ${nc} · 判断 ${nj}）</p>
+          <button id="exam-generate" class="btn-quiz ml-auto mt-3" ${total ? '' : 'disabled style="opacity:.45"'}>
+            <i class="fa-solid fa-wand-magic-sparkles"></i>生成试卷</button>
+        </div>
+      </div>`;
+
+    bindExamSetup();
+  }
+
+  /** 设置页事件绑定 */
+  function bindExamSetup() {
+    const cfg = examSetup;
+    const body = document.getElementById('exam-body');
+
+    body.querySelectorAll('.exam-sel-book').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bid = btn.dataset.book;
+        if (cfg.books.includes(bid)) {
+          cfg.books = cfg.books.filter(x => x !== bid);
+          delete cfg.chapters[bid];
+        } else {
+          cfg.books.push(bid);
+          const n = BOOKS.find(b => b.id === bid).chapters.length;
+          cfg.chapters[bid] = Array.from({ length: n }, (_, i) => i);
+        }
+        renderExamSetup();
+      });
+    });
+
+    body.querySelectorAll('[data-all]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bid = btn.dataset.all;
+        const n = BOOKS.find(b => b.id === bid).chapters.length;
+        const sel = cfg.chapters[bid] || [];
+        cfg.chapters[bid] = sel.length === n ? [] : Array.from({ length: n }, (_, i) => i);
+        renderExamSetup();
+      });
+    });
+
+    body.querySelectorAll('.exam-ch-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const bid = btn.dataset.book, ci = Number(btn.dataset.ch);
+        const sel = cfg.chapters[bid] || [];
+        cfg.chapters[bid] = sel.includes(ci) ? sel.filter(x => x !== ci) : sel.concat(ci);
+        renderExamSetup();
+      });
+    });
+
+    body.querySelectorAll('[data-step-kind]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const key = btn.dataset.stepKind === 'choice' ? 'nChoice' : 'nJudge';
+        cfg[key] = Math.max(0, Math.min(200, cfg[key] + Number(btn.dataset.stepD)));
+        renderExamSetup();
+      });
+    });
+
+    body.querySelectorAll('.exam-diff-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const d = btn.dataset.diff;
+        if (cfg.diffs.includes(d)) {
+          if (cfg.diffs.length === 1) { showToast('至少保留一种难度'); return; }
+          cfg.diffs = cfg.diffs.filter(x => x !== d);
+        } else {
+          cfg.diffs.push(d);
+        }
+        renderExamSetup();
+      });
+    });
+
+    body.querySelectorAll('[data-cd]').forEach(btn => {
+      btn.addEventListener('click', () => { cfg.countdown = btn.dataset.cd === 'on'; renderExamSetup(); });
+    });
+    body.querySelectorAll('.exam-min-chip').forEach(btn => {
+      btn.addEventListener('click', () => { cfg.minutes = Number(btn.dataset.min); renderExamSetup(); });
+    });
+
+    const gen = body.querySelector('#exam-generate');
+    if (gen) gen.addEventListener('click', generateExam);
+  }
+
+  /** 生成试卷并进入考试 */
+  function generateExam() {
+    const cfg = examSetup;
+    const pool = examPool(cfg);
+    const nc = Math.min(cfg.nChoice, pool.choice.length);
+    const nj = Math.min(cfg.nJudge, pool.judge.length);
+    if (nc + nj === 0) { showToast('选中范围暂无题目，请调整设置'); return; }
+
+    const qs = shuffle(
+      shuffle(pool.choice.slice()).slice(0, nc)
+        .concat(shuffle(pool.judge.slice()).slice(0, nj))
+    );
+
+    examState = {
+      phase: 'taking',
+      cfg, qs,
+      answers: new Array(qs.length).fill(null),
+      marks: new Array(qs.length).fill(false),
+      idx: 0,
+      start: Date.now(),
+      duration: cfg.countdown ? cfg.minutes * 60 : null,
+      timerId: null
+    };
+    renderExamTaking();
+    startExamTimer();
+  }
+
+  /** 考试计时（正计时或倒计时） */
+  function startExamTimer() {
+    stopExamTimer();
+    const tick = () => {
+      const st = examState;
+      if (!st || st.phase !== 'taking') return;
+      const el = document.getElementById('exam-timer');
+      if (st.duration) {
+        const left = st.duration - Math.floor((Date.now() - st.start) / 1000);
+        if (left <= 0) { el.textContent = '⏳ 00:00'; submitExam(true); return; }
+        el.textContent = '⏳ ' + fmtTime(left);
+        el.classList.toggle('text-rose-400', left <= 60);
+        el.classList.toggle('font-bold', left <= 60);
+      } else {
+        el.textContent = '⏱ ' + fmtTime(Math.floor((Date.now() - st.start) / 1000));
+      }
+    };
+    tick();
+    examState.timerId = setInterval(tick, 1000);
+  }
+  function stopExamTimer() {
+    if (examState && examState.timerId) { clearInterval(examState.timerId); examState.timerId = null; }
+  }
+
+  /** 渲染答题页（单题视图 + 答题卡导航） */
+  function renderExamTaking() {
+    const st = examState;
+    const total = st.qs.length;
+    const q = st.qs[st.idx];
+    const isJudge = q.type === 'judge';
+    const opts = isJudge ? ['正确', '错误'] : q.options;
+    const d = q.difficulty || 'base';
+    const dTxt = d === 'high' ? '拔高' : d === 'mid' ? '中档' : '基础';
+    const userPick = st.answers[st.idx];
+    const answered = st.answers.filter(a => a !== null).length;
+
+    document.getElementById('exam-progress').textContent =
+      `第 ${st.idx + 1}/${total} 题 · 已答 ${answered}`;
+    document.getElementById('exam-bar-fill').style.width = (answered / total * 100) + '%';
+
+    document.getElementById('exam-body').innerHTML = `
+      <div class="glass-card p-4 sm:p-5 fade-item">
+        <p class="text-[11.5px] t-sub mb-2"><i class="fa-solid fa-location-dot mr-1 opacity-60"></i>${esc(q._bookTitle)} · ${esc(q._chTitle)}</p>
+        <p class="text-[13.5px] sm:text-sm font-semibold t-main leading-relaxed">
+          <span class="type-badge ${isJudge ? 'judge' : ''}">${isJudge ? '判断题' : '单选题'}</span><span class="diff-badge diff-${d}">${dTxt}</span>
+          ${st.idx + 1}. ${esc(q.q)}
+        </p>
+        <div class="mt-3.5">
+          ${opts.map((o, i) => `
+            <button class="quiz-opt ${userPick === i ? 'sel' : ''}" data-opt="${i}">
+              <span class="opt-key">${isJudge ? (i === 0 ? '✓' : '✗') : 'ABCD'[i]}</span>
+              <span>${esc(o)}</span>
+            </button>`).join('')}
+        </div>
+        ${userPick !== null ? `
+        <p class="text-[11.5px] t-sub mt-2.5"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>已作答，可点击其他选项修改答案</p>` : ''}
+        <div class="mt-3 flex items-center justify-between flex-wrap gap-2">
+          <button id="exam-mark" class="btn-soft ${st.marks[st.idx] ? 'on' : ''}">
+            <i class="fa-${st.marks[st.idx] ? 'solid' : 'regular'} fa-bookmark"></i>
+            ${st.marks[st.idx] ? '已标记（点击取消）' : '标记不会'}</button>
+          <div class="flex gap-2">
+            ${st.idx > 0 ? '<button id="exam-prev" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>上一题</button>' : ''}
+            <button id="exam-next" class="btn-quiz">${st.idx + 1 === total ? '已是最后一题' : '下一题'} <i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 sm:p-5">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <p class="text-[12.5px] t-main font-semibold"><i class="fa-solid fa-list-ol text-cyan-300 mr-1.5"></i>答题卡</p>
+          <button id="exam-submit" class="btn-quiz !py-1.5 !px-4 !text-[12.5px]"><i class="fa-solid fa-flag-checkered"></i>交卷</button>
+        </div>
+        <div class="flex flex-wrap gap-1.5">
+          ${st.qs.map((x, i) => {
+            const cls = [
+              'exam-nav-cell',
+              st.answers[i] !== null ? 'done' : '',
+              st.marks[i] ? 'marked' : '',
+              i === st.idx ? 'current' : ''
+            ].join(' ');
+            return `<button class="${cls}" data-jump="${i}">${i + 1}</button>`;
+          }).join('')}
+        </div>
+        <p class="text-[11px] t-sub mt-3 leading-relaxed">
+          <span class="inline-block w-2.5 h-2.5 rounded-sm mr-1 align-middle" style="background:rgba(74,222,128,.5)"></span>已答
+          <span class="inline-block w-2.5 h-2.5 rounded-sm mr-1 ml-3 align-middle" style="background:var(--c-input);border:1px solid var(--c-border)"></span>未答
+          <span class="inline-block w-2.5 h-2.5 rounded-sm mr-1 ml-3 align-middle" style="border:1px solid rgba(251,191,36,.8)"></span>标记
+          <span class="inline-block w-2.5 h-2.5 rounded-sm mr-1 ml-3 align-middle" style="box-shadow:0 0 0 2px rgba(103,232,249,.75)"></span>当前</p>
+      </div>`;
+
+    document.querySelectorAll('#exam-body .quiz-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        st.answers[st.idx] = Number(btn.dataset.opt);
+        renderExamTaking();
+      });
+    });
+    document.getElementById('exam-mark').addEventListener('click', () => {
+      st.marks[st.idx] = !st.marks[st.idx];
+      renderExamTaking();
+    });
+    const prev = document.getElementById('exam-prev');
+    if (prev) prev.addEventListener('click', () => { st.idx--; renderExamTaking(); });
+    document.getElementById('exam-next').addEventListener('click', () => {
+      if (st.idx + 1 < st.qs.length) { st.idx++; renderExamTaking(); }
+    });
+    document.querySelectorAll('[data-jump]').forEach(btn => {
+      btn.addEventListener('click', () => { st.idx = Number(btn.dataset.jump); renderExamTaking(); });
+    });
+    document.getElementById('exam-submit').addEventListener('click', () => submitExam(false));
+  }
+
+  /** 交卷（可由倒计时自动触发） */
+  function submitExam(auto) {
+    const st = examState;
+    if (!st || st.phase !== 'taking') return;
+    const unanswered = st.answers.filter(a => a === null).length;
+    if (!auto && unanswered > 0) {
+      if (!confirm('还有 ' + unanswered + ' 道题未作答，确定交卷吗？未作答按答错计。')) return;
+    }
+    stopExamTimer();
+    st.phase = 'result';
+    st.autoSubmitted = !!auto;
+    st.usedSecs = Math.floor((Date.now() - st.start) / 1000);
+    renderExamResult();
+  }
+
+  /** 复盘选项行 */
+  function examReviewOptions(q, userPick) {
+    if (q.type === 'judge') {
+      const ci = q.answer ? 0 : 1;
+      return [0, 1].map(i => {
+        const cls = i === ci ? 'ok' : (i === userPick ? 'bad' : '');
+        return `<p class="exam-opt-mini ${cls}"><span class="ek">${i === 0 ? '✓' : '✗'}</span>${i === 0 ? '正确' : '错误'}</p>`;
+      }).join('');
+    }
+    return q.options.map((o, i) => {
+      let cls = '';
+      if (i === q.answer) cls = 'ok';
+      else if (i === userPick) cls = 'bad';
+      return `<p class="exam-opt-mini ${cls}"><span class="ek">${'ABCD'[i]}</span>${esc(o)}</p>`;
+    }).join('')
+  }
+
+  /** 渲染成绩与逐题解析 */
+  function renderExamResult() {
+    const st = examState;
+    const total = st.qs.length;
+    let correct = 0;
+    st.qs.forEach((q, i) => {
+      const ci = q.type === 'judge' ? (q.answer ? 0 : 1) : q.answer;
+      if (st.answers[i] === ci) correct++;
+    });
+    const wrongN = total - correct;
+    const pct = Math.round(correct / total * 100);
+
+    const msg = pct >= 90 ? '优秀！模拟考试发挥出色 🎉'
+      : pct >= 75 ? '很不错，保持手感继续冲 💪'
+        : pct >= 60 ? '及格啦，错题逐题吃透 📖'
+          : '别灰心，结合解析回归教材补短板 🌱';
+
+    document.getElementById('exam-progress').textContent = '考试结束';
+    document.getElementById('exam-bar-fill').style.width = '100%';
+    const tEl = document.getElementById('exam-timer');
+    tEl.textContent = '⏱ ' + fmtTime(st.usedSecs);
+    tEl.classList.remove('text-rose-400', 'font-bold');
+
+    document.getElementById('exam-body').innerHTML = `
+      <div class="glass-card p-6 sm:p-8 text-center fade-item">
+        <p class="text-[12.5px] t-sub">${st.autoSubmitted ? '倒计时结束，已自动交卷' : '试卷已提交'}</p>
+        <p class="text-4xl font-black ${pct >= 60 ? 'text-cyan-300' : 'text-rose-400'} mt-1">${pct}<span class="text-lg">%</span></p>
+        <p class="text-[13px] t-main mt-2 font-semibold">得分 ${correct} / ${total} 分</p>
+        <p class="text-[12.5px] t-sub mt-1">答对 ${correct} · 答错/未答 ${wrongN} · 用时 ${fmtTime(st.usedSecs)}</p>
+        <p class="text-[13px] t-main mt-1.5">${msg}</p>
+        <div class="flex flex-wrap justify-center gap-2.5 mt-5">
+          ${wrongN > 0 ? '<button id="exam-add-wrong" class="btn-quiz"><i class="fa-solid fa-book-bookmark"></i>错题一键加入错题本</button>' : ''}
+          <button id="exam-again" class="btn-soft"><i class="fa-solid fa-rotate"></i>同设置再组一套</button>
+          <button id="exam-setup" class="btn-soft"><i class="fa-solid fa-sliders"></i>修改设置</button>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 sm:p-5">
+        <p class="text-[13px] t-main font-semibold mb-3"><i class="fa-solid fa-magnifying-glass-chart text-cyan-300 mr-1.5"></i>逐题复盘（标准答案 + 解析）</p>
+        ${st.qs.map((q, i) => {
+          const ci = q.type === 'judge' ? (q.answer ? 0 : 1) : q.answer;
+          const userPick = st.answers[i];
+          const isJudge = q.type === 'judge';
+          const d = q.difficulty || 'base';
+          const dTxt = d === 'high' ? '拔高' : d === 'mid' ? '中档' : '基础';
+          const verdict = userPick === null
+            ? '<span class="text-amber-400">未作答</span>'
+            : (userPick === ci ? '<span class="text-green-400">✓ 答对</span>' : '<span class="text-rose-400">✗ 答错</span>');
+          return `
+          <div class="exam-review-item">
+            <p class="text-[11px] t-sub mb-1.5">
+              <i class="fa-solid fa-location-dot mr-1 opacity-60"></i>${esc(q._bookTitle)} · ${esc(q._chTitle)}</p>
+            <p class="text-[13px] t-main font-semibold leading-relaxed">
+              <span class="type-badge ${isJudge ? 'judge' : ''}">${isJudge ? '判断' : '单选'}</span><span class="diff-badge diff-${d}">${dTxt}</span>
+              ${i + 1}. ${esc(q.q)} <span class="ml-1">${verdict}</span></p>
+            <div class="mt-2">
+              ${examReviewOptions(q, userPick)}
+            </div>
+            <p class="text-[12px] t-sub mt-2 leading-relaxed"><span class="text-cyan-300">解析：</span>${esc(q.explain || '暂无解析')}</p>
+          </div>`;
+        }).join('')}
+      </div>`;
+
+    const addBtn = document.getElementById('exam-add-wrong');
+    if (addBtn) addBtn.addEventListener('click', examWrongToBook);
+    document.getElementById('exam-again').addEventListener('click', generateExam);
+    document.getElementById('exam-setup').addEventListener('click', renderExamSetup);
+  }
+
+  /** 本次试卷错题 → 统一错题本（按 key 去重，结构与章节错题一致） */
+  function examWrongToBook() {
+    const st = examState;
+    const list = getWrong();
+    let add = 0;
+    st.qs.forEach((q, i) => {
+      const ci = q.type === 'judge' ? (q.answer ? 0 : 1) : q.answer;
+      if (st.answers[i] !== ci) {
+        const key = 'exam-' + q._bookId + '-' + q._chIdx + '-' + q._i;
+        if (!list.some(w => w.key === key)) {
+          list.unshift({
+            key, type: q.type, q: q.q, options: q.options || null,
+            answer: q.answer, explain: q.explain || '',
+            where: q._bookTitle + ' · ' + q._chTitle, ts: Date.now()
+          });
+          add++;
+        }
+      }
+    });
+    saveWrong(list);
+    showToast(add ? ('已加入 ' + add + ' 道错题') : '这些错题都已在错题本中');
+    const b = document.getElementById('exam-add-wrong');
+    if (b) {
+      b.disabled = true;
+      b.classList.add('opacity-60');
+      b.innerHTML = '<i class="fa-solid fa-check"></i>已加入错题本';
+    }
+  }
+
+  /** 返回书架：考试中需确认放弃 */
+  function examBack() {
+    if (examState && examState.phase === 'taking') {
+      if (!confirm('考试正在进行，确定退出吗？本卷不会保存。')) return;
+      stopExamTimer();
+    }
+    examState = null;
+    showView('main');
+  }
+
   /** 刷题 / 错题本静态按钮绑定 */
   function initQuiz() {
     document.getElementById('quiz-back').addEventListener('click', exitQuiz);
+    document.getElementById('btn-exam').addEventListener('click', openExamSetup);
+    document.getElementById('exam-back').addEventListener('click', examBack);
     document.getElementById('btn-wrong').addEventListener('click', () => {
       renderWrongbook();
       showView('wrong');
