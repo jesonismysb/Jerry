@@ -14,6 +14,16 @@
   var KEY = 'nara_checkin_v1';
   var UNO_COST = 150;
 
+  /* 游戏解锁积分地图（UNO 保持原 150；新增游戏按定价） */
+  var GAME_COSTS = {
+    uno: 150,
+    tiaoqi: 200,     // 跳棋
+    doushou: 180,    // 斗兽棋
+    feixing: 250,    // 飞行棋
+    heibai: 160,     // 黑白棋
+    dafuweng: 300    // 简易大富翁
+  };
+
   /* ---------------- 日期工具（本地时区） ---------------- */
   function pad(n) { return String(n).padStart(2, '0'); }
   function dateStr(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -133,20 +143,23 @@
     return { ok: true, base: base, bonus: bonus, gained: gained, streak: state.streak, milestone: milestone };
   }
 
-  /* ---------------- UNO 解锁 ---------------- */
+  /* ---------------- 游戏解锁（通用；UNO 行为保持不变） ---------------- */
   function isUnlocked(game) {
-    if (game !== 'uno') return true;
-    return !!state.unlocks.uno;
+    if (!GAME_COSTS[game]) return true;        // 免费游戏（五子棋 / 象棋等）
+    return !!state.unlocks[game];
   }
-  function unlockUno() {
-    if (state.unlocks.uno) return { ok: true, already: true };
-    if (state.points < UNO_COST) return { ok: false, reason: '积分不够，请坚持签到赚取积分' };
-    state.points -= UNO_COST;
-    state.unlocks.uno = true;
+  function unlockGame(game) {
+    var cost = GAME_COSTS[game];
+    if (cost == null) return { ok: true, already: true };
+    if (state.unlocks[game]) return { ok: true, already: true };
+    if (state.points < cost) return { ok: false, reason: '积分不足，请每日签到赚取积分' };
+    state.points -= cost;
+    state.unlocks[game] = true;
     save(state);
     Snd.play('unlock');
     return { ok: true };
   }
+  function unlockUno() { return unlockGame('uno'); }
 
   /* ---------------- 样式注入 ---------------- */
   var CSS = [
@@ -352,30 +365,43 @@
     renderSignModal();
   }
 
-  /* ---------------- UNO 解锁弹窗 ---------------- */
+  /* ---------------- 游戏解锁弹窗（通用；UNO 沿用原样式与文案） ---------------- */
+  var UNLOCK_META = {
+    uno:      { name: 'UNO 卡牌',   icon: 'fa-layer-group',  color: 'bg-emerald-400/10 text-emerald-300', tag: 'AI 简单/普通 · WebRTC 联机 · 完整规则' },
+    tiaoqi:   { name: '跳棋',       icon: 'fa-circle-nodes', color: 'bg-sky-400/10 text-sky-300',        tag: 'AI 简单/普通/困难 · WebRTC 联机' },
+    doushou:  { name: '斗兽棋',     icon: 'fa-paw',          color: 'bg-orange-400/10 text-orange-300',   tag: 'AI 简单/普通/困难 · WebRTC 联机' },
+    feixing:  { name: '飞行棋',     icon: 'fa-plane',        color: 'bg-fuchsia-400/10 text-fuchsia-300', tag: '2-6 人 · AI/联机 · 欢乐骰运' },
+    heibai:   { name: '黑白棋',     icon: 'fa-circle-half-stroke', color: 'bg-teal-400/10 text-teal-300', tag: 'AI 简单/普通/困难 · WebRTC 联机' },
+    dafuweng: { name: '简易大富翁', icon: 'fa-coins',        color: 'bg-yellow-400/10 text-yellow-300',   tag: '2-4 人 · AI/联机 · 买地收租' }
+  };
+  var pendingGame = 'uno';
+
   function renderUnlockModal() {
+    var game = pendingGame;
+    var cost = GAME_COSTS[game];
+    var meta = UNLOCK_META[game] || { name: game, icon: 'fa-gamepad', color: 'bg-cyan-400/10 text-cyan-300', tag: '' };
     var mask = ensureMask('nc-mask-unlock');
-    var enough = state.points >= UNO_COST;
-    var pct = Math.min(100, Math.round(state.points / UNO_COST * 100));
+    var enough = state.points >= cost;
+    var pct = Math.min(100, Math.round(state.points / cost * 100));
 
     mask.innerHTML =
       '<div class="nc-box nc-pop p-5 sm:p-6">' +
         '<div class="flex items-center justify-between">' +
-          '<h4 class="text-base font-semibold text-cyan-200"><i class="fa-solid fa-lock mr-1.5"></i>解锁 UNO 卡牌</h4>' +
+          '<h4 class="text-base font-semibold text-cyan-200"><i class="fa-solid fa-lock mr-1.5"></i>解锁 ' + meta.name + '</h4>' +
           '<button class="nc-ghost !px-2" data-nc="close"><i class="fa-solid fa-xmark"></i></button>' +
         '</div>' +
 
         '<div class="flex items-center gap-3 mt-4 rounded-xl border border-white/10 bg-white/[.04] p-3">' +
-          '<span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg bg-emerald-400/10 text-emerald-300"><i class="fa-solid fa-layer-group"></i></span>' +
+          '<span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg ' + meta.color + '"><i class="fa-solid ' + meta.icon + '"></i></span>' +
           '<div class="flex-1">' +
-            '<p class="text-sm font-semibold text-slate-100">UNO 卡牌 · 2-6 人欢乐对局</p>' +
-            '<p class="text-[11px] text-slate-500 mt-0.5">AI 简单/普通 · WebRTC 联机 · 完整规则</p>' +
+            '<p class="text-sm font-semibold text-slate-100">' + meta.name + '</p>' +
+            '<p class="text-[11px] text-slate-500 mt-0.5">' + meta.tag + '</p>' +
           '</div>' +
         '</div>' +
 
         '<div class="mt-4 flex items-center justify-between text-[13px]">' +
           '<span class="text-slate-400">解锁需要</span>' +
-          '<span class="font-bold text-amber-300"><i class="fa-solid fa-star mr-0.5"></i>' + UNO_COST + ' 积分</span>' +
+          '<span class="font-bold text-amber-300"><i class="fa-solid fa-star mr-0.5"></i>' + cost + ' 积分</span>' +
         '</div>' +
         '<div class="mt-1 flex items-center justify-between text-[13px]">' +
           '<span class="text-slate-400">当前拥有</span>' +
@@ -385,7 +411,7 @@
           '<div class="h-full rounded-full bg-gradient-to-r from-amber-300 to-emerald-400 transition-all" style="width:' + pct + '%"></div>' +
         '</div>' +
         '<p class="text-[11px] text-slate-500 mt-1.5" id="nc-unlock-msg">' +
-          (enough ? '积分充足，解锁后永久可玩' : '还差 ' + (UNO_COST - state.points) + ' 积分，坚持每日签到即可赚取') + '</p>' +
+          (enough ? '积分充足，解锁后永久可玩' : '还差 ' + (cost - state.points) + ' 积分，坚持每日签到即可赚取') + '</p>' +
 
         '<div class="mt-5 flex justify-end gap-2">' +
           '<button class="nc-ghost" data-nc="close">再想想</button>' +
@@ -396,8 +422,10 @@
     mask.classList.add('show');
   }
 
-  function showUnlock() {
-    if (isUnlocked('uno')) return;
+  function showUnlock(game) {
+    game = game || 'uno';
+    if (isUnlocked(game)) return;
+    pendingGame = game;
     renderUnlockModal();
   }
 
@@ -434,9 +462,10 @@
         renderSignModal();
         break;
       case 'unlock-confirm': {
-        var u = unlockUno();
+        var g = pendingGame;
+        var u = unlockGame(g);
         if (u.ok && !u.already) {
-          toast('🎉 UNO 解锁成功，剩余 ' + state.points + ' 积分，尽情游玩吧！');
+          toast('🎉 ' + (UNLOCK_META[g] ? UNLOCK_META[g].name : g) + ' 解锁成功，剩余 ' + state.points + ' 积分，尽情游玩吧！');
           refreshLockVisuals();
           closeMasks();
         } else if (u.already) {
@@ -462,11 +491,19 @@
       : '<i class="fa-solid fa-calendar-day"></i>今日签到';
   }
 
-  /* ---------------- UNO 锁视觉（tools.html / games.html） ---------------- */
+  /* ---------------- 锁视觉 & 门禁（通用；UNO 的 data-uno-lock 保持兼容） ---------------- */
+  function lockNodes() {
+    // 新游戏用 data-nc-lock="游戏id"；UNO 旧属性 data-uno-lock 等价
+    var list = [];
+    document.querySelectorAll('[data-nc-lock]').forEach(function (el) { list.push({ el: el, game: el.getAttribute('data-nc-lock') }); });
+    document.querySelectorAll('[data-uno-lock]').forEach(function (el) { list.push({ el: el, game: 'uno' }); });
+    return list;
+  }
+
   function refreshLockVisuals() {
-    var nodes = document.querySelectorAll('[data-uno-lock]');
-    var locked = !isUnlocked('uno');
-    nodes.forEach(function (el) {
+    lockNodes().forEach(function (item) {
+      var el = item.el, game = item.game;
+      var locked = !isUnlocked(game);
       el.classList.toggle('nc-locked', locked);
       el.style.position = el.style.position || 'relative';
       var badge = el.querySelector('.nc-lockbadge');
@@ -474,7 +511,7 @@
         var b = document.createElement('span');
         b.className = 'nc-lockbadge';
         b.textContent = '🔒';
-        b.title = '签到攒满 150 积分可解锁';
+        b.title = '签到攒满 ' + GAME_COSTS[game] + ' 积分可解锁';
         el.appendChild(b);
       } else if (!locked && badge) {
         badge.remove();
@@ -483,13 +520,15 @@
   }
 
   function initGates() {
-    // 锚点门禁（tools.html）：锁定时拦截跳转
-    document.querySelectorAll('a[data-uno-lock]').forEach(function (a) {
-      a.addEventListener('click', function (e) {
-        if (!isUnlocked('uno')) {
+    // 锚点门禁（tools.html）：锁定时拦截跳转并弹对应游戏的解锁窗
+    lockNodes().forEach(function (item) {
+      var el = item.el, game = item.game;
+      if (el.tagName !== 'A') return;
+      el.addEventListener('click', function (e) {
+        if (!isUnlocked(game)) {
           e.preventDefault();
           e.stopPropagation();
-          showUnlock();
+          showUnlock(game);
         }
       });
     });
@@ -531,6 +570,8 @@
     isUnlocked: isUnlocked,
     showUnlock: showUnlock,
     cost: UNO_COST,
+    costs: GAME_COSTS,
+    costOf: function (game) { return GAME_COSTS[game] || 0; },
     points: function () { return state.points; },
     refresh: refreshLockVisuals
   };

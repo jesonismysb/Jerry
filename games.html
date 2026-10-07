@@ -369,6 +369,61 @@
         '打出倒数第二张牌前请点击「UNO!」按钮；忘记喊 UNO 时，下家可点击「举报」罚你摸 2 张牌。',
         '最先出完手牌的玩家获胜；牌堆抽空时会把弃牌堆重洗为新牌堆。联机模式由房主统一发牌与裁判，每位玩家只能看到自己的手牌。'
       ]
+    },
+    tiaoqi: {
+      name: '跳棋', icon: 'fa-solid fa-circle-nodes', color: 'bg-sky-400/10 text-sky-300',
+      seats: null,
+      desc: '星形棋盘，连跳进营',
+      rules: [
+        '双方各执 10 枚棋子，开局时分别占据星形棋盘上下两端的三角形营区。',
+        '每回合可将一枚棋子走到相邻的空位；也可「跳」过紧贴的任意棋子，落到它正对面的空位，并可沿不同方向连续多次跳跃。',
+        '目标是把自己的 10 枚棋子全部移入并填满对方的营区，先完成者获胜；先进入对方营区的棋子不可再移出。',
+        'AI 分为简单 / 普通 / 困难三档；联机模式房主在上方营区，通过 WebRTC 点对点对战。'
+      ]
+    },
+    doushou: {
+      name: '斗兽棋', icon: 'fa-solid fa-paw', color: 'bg-orange-400/10 text-orange-300',
+      seats: null,
+      desc: '八兽争霸，鼠可克象',
+      rules: [
+        '双方各 8 枚棋子：象8、狮7、虎6、豹5、狼4、狗3、猫2、鼠1。高等级可吃同级或更低等级，但鼠可以吃象，象不能吃鼠。',
+        '鼠能进入河流，水中的鼠只能被水中的鼠攻击；狮、虎可直线跃过河面，但河中若有鼠挡道则不能跳。',
+        '对方棋子走入己方陷阱后战斗力降为 0，任意己方棋子都可吃掉它；进入对方兽穴即获胜；棋子不能进入自己的兽穴。',
+        'AI 分为简单 / 普通 / 困难三档；联机模式房主执下方一方，WebRTC 点对点对战。'
+      ]
+    },
+    feixing: {
+      name: '飞行棋', icon: 'fa-solid fa-plane', color: 'bg-fuchsia-400/10 text-fuchsia-300',
+      seats: null, multi: true, minN: 2, maxN: 6, peers: 5,
+      desc: '2-6 人骰运竞速',
+      rules: [
+        '2-6 人各驾驶 4 架飞机停在停机坪。必须掷出 6 点才能让一架飞机起飞，起飞后再掷一次决定前进步数。',
+        '每掷出 6 点可再掷一次；连续三次掷出 6，则当轮行动作废。走到与自己颜色相同的格子时，可再向前跳 4 格。',
+        '走到终点时必须恰好点数进入，点数超出则多退少补（在最后一段上折返）；把对方飞机撞回停机坪时，己方再进一格。',
+        '最先让 4 架飞机全部到达终点者获胜。AI 分为简单 / 普通 / 困难；联机由房主统一掷骰裁判，支持 2-6 人。'
+      ]
+    },
+    heibai: {
+      name: '黑白棋', icon: 'fa-solid fa-circle-half-stroke', color: 'bg-teal-400/10 text-teal-300',
+      seats: null,
+      desc: '角部争夺，末盘翻盘',
+      rules: [
+        '8×8 棋盘，开局在中心 2×2 交叉放置黑白各 2 枚，黑方先行。',
+        '落子必须在横、竖或斜方向夹住对方至少一枚棋子，被夹住的棋子全部翻成自己的颜色；没有合法落子点时自动跳过。',
+        '当双方都无棋可下时对局结束，棋盘上棋子数量多的一方获胜。',
+        '角落与边角价值极高，困难 AI 会做多步搜索并评估行动力，请谨慎弃角。联机模式房主执黑先行。'
+      ]
+    },
+    dafuweng: {
+      name: '简易大富翁', icon: 'fa-solid fa-coins', color: 'bg-yellow-400/10 text-yellow-300',
+      seats: null, multi: true, minN: 2, maxN: 4, peers: 3,
+      desc: '2-4 人买地收租',
+      rules: [
+        '2-4 人开局，每人初始持有 1500 金币，轮流掷骰沿棋盘环行。',
+        '停到无主地产时可购买；其他玩家停在你的地产上必须缴纳租金。再次停到自己的地产可半价升级，最多升到 3 级，租金随等级翻倍。',
+        '停到「机会」格随机获得奖励或损失；停到「税金」格需缴纳金币。现金不足以支付即破产退出。',
+        '最后未破产者获胜；若 40 轮后无人破产，则持有金币最多者获胜。AI 分为简单 / 普通 / 困难；联机由房主统一裁判。'
+      ]
     }
   };
 
@@ -436,8 +491,11 @@
     const grid = document.getElementById('hub-grid');
     grid.innerHTML = Object.keys(GAMES).map((id, i) => {
       const g = GAMES[id];
+      // 锁属性：UNO 沿用旧 data-uno-lock；其他付费游戏用通用 data-nc-lock
+      const lockAttr = id === 'uno' ? 'data-uno-lock'
+        : 'tiaoqi,doushou,feixing,heibai,dafuweng'.split(',').includes(id) ? `data-nc-lock="${id}"` : '';
       return `
-        <button data-g="${id}" ${id === 'uno' ? 'data-uno-lock' : ''}
+        <button data-g="${id}" ${lockAttr}
                 class="entry-card glass-card p-5 flex flex-col items-center text-center gap-2.5"
                 style="animation-delay:${i * 0.07}s">
           <span class="w-12 h-12 rounded-xl flex items-center justify-center text-xl ${g.color}">
@@ -450,9 +508,9 @@
     }).join('');
     grid.querySelectorAll('button').forEach(b => {
       b.addEventListener('click', () => {
-        // UNO 门禁：未解锁时弹解锁窗，不进大厅
-        if (b.dataset.g === 'uno' && window.NaraCheckin && !window.NaraCheckin.isUnlocked('uno')) {
-          window.NaraCheckin.showUnlock();
+        // 通用门禁：未解锁的游戏弹对应解锁窗，不进大厅（五子棋/象棋 isUnlocked 恒为 true）
+        if (window.NaraCheckin && !window.NaraCheckin.isUnlocked(b.dataset.g)) {
+          window.NaraCheckin.showUnlock(b.dataset.g);
           return;
         }
         openLobby(b.dataset.g);
@@ -462,8 +520,9 @@
 
   function openLobby(gameId, presetMode) {
     lobbyGame = gameId;
-    lobbyCfg = { mode: presetMode || 'ai', diff: 2, seat: 0, count: 4, nettab: 'auto', side: 'host' };
     const g = GAMES[gameId];
+    const defaultCount = g.multi ? Math.min(4, g.maxN) : 2;
+    lobbyCfg = { mode: presetMode || 'ai', diff: 2, seat: 0, count: defaultCount, nettab: 'auto', side: 'host' };
     document.getElementById('lobby-title').innerHTML =
       `<i class="${g.icon} ${g.color.split(' ')[1]}"></i>${g.name}`;
 
@@ -472,11 +531,13 @@
     document.getElementById('diff-segs').innerHTML = diffs.map(d =>
       `<button class="seg-btn ${Number(d[0]) === lobbyCfg.diff ? 'on' : ''}" data-diff="${d[0]}">${d[1]}</button>`).join('');
 
-    // 玩家数量段（仅多人游戏如 UNO）
+    // 玩家数量段（多人游戏：UNO 2-6、飞行棋 2-6、大富翁 2-4）
     const countRow = document.getElementById('count-row');
     if (g.multi) {
       countRow.classList.remove('hidden');
-      document.getElementById('count-segs').innerHTML = [2, 3, 4, 5, 6].map(k =>
+      const opts = [];
+      for (let k = g.minN; k <= g.maxN; k++) opts.push(k);
+      document.getElementById('count-segs').innerHTML = opts.map(k =>
         `<button class="seg-btn ${k === lobbyCfg.count ? 'on' : ''}" data-count="${k}">${k} 人</button>`).join('');
     } else {
       countRow.classList.add('hidden');
@@ -587,29 +648,31 @@
       setRoomStatus('<p class="text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在创建房间…</p>');
       await ensureNet();
       resetRoomStatus();
-      const isUno = lobbyGame === 'uno';
-      netRoom = new window.NetRoom(lobbyGame, isUno ? 5 : 1);
+      const gm = GAMES[lobbyGame];
+      const isMulti = !!gm.multi;
+      netRoom = new window.NetRoom(lobbyGame, gm.peers || 1);
       wireRoomClose();
       const code = await netRoom.host();
-      if (isUno) {
-        // UNO 多人房间：房主等待 1-5 名玩家加入后手动开局
+      if (isMulti) {
+        // 多人房间（UNO / 飞行棋 / 大富翁）：房主等待玩家加入后手动开局
         const renderRoom = () => {
           const n = 1 + netRoom.peerCount();
           const names = ['房主（我）'];
           for (let i = 2; i <= n; i++) names.push('玩家 ' + i);
+          const canStart = n >= gm.minN;
           setRoomStatus(`
-            <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>房间已创建，邀请好友加入（${n}/6）</p>
+            <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>房间已创建，邀请好友加入（${n}/${gm.maxN}）</p>
             <p class="text-3xl font-mono font-bold tracking-[0.35em] text-cyan-200 my-2">${code}</p>
             <p class="text-[11px] text-slate-500 mb-3">请把这 6 位房间号告诉好友</p>
             <div class="flex flex-wrap justify-center gap-1.5 my-3">
               ${names.map(x => `<span class="text-[11px] px-2.5 py-1 rounded-full bg-cyan-400/10 border border-cyan-300/25 text-cyan-100"><i class="fa-solid fa-user mr-1"></i>${x}</span>`).join('')}
             </div>
-            <button id="btn-room-start" class="btn-primary" ${n < 2 ? 'disabled' : ''}><i class="fa-solid fa-play"></i>开始对局（${n} 人）</button>
-            <p class="text-[11px] text-slate-500 mt-2">2-6 人开局，人齐后点击开始；开始后房间将锁定</p>`);
+            <button id="btn-room-start" class="btn-primary" ${canStart ? '' : 'disabled'}><i class="fa-solid fa-play"></i>开始对局（${n} 人）</button>
+            <p class="text-[11px] text-slate-500 mt-2">${gm.minN}-${gm.maxN} 人开局，人齐后点击开始；开始后房间将锁定</p>`);
           const btn = document.getElementById('btn-room-start');
           if (btn) btn.addEventListener('click', () => {
             const total = 1 + netRoom.peerCount();
-            if (total < 2) return;
+            if (total < gm.minN) return;
             netRoom.lock();
             for (let s = 1; s <= netRoom.maxPeers; s++) netRoom.sendTo(s, { t: 'start', seat: s, n: total });
             startGame(0, total);
@@ -651,7 +714,8 @@
           return;
         }
         if (msg && msg.t === 'start') {
-          if (lobbyGame === 'uno') startGame(msg.seat || 1, msg.n || 2);
+          const gm = GAMES[lobbyGame];
+          if (gm.multi) startGame(msg.seat || 1, msg.n || gm.minN || 2);
           else startGame(1);
         }
       });
@@ -822,12 +886,12 @@
     // 壁纸在首屏渲染完成后再加载
     setTimeout(loadBackground, 300);
 
-    // 支持从工具库带参直达：?g=gomoku（UNO 未解锁时拦截并弹解锁窗）
+    // 支持从工具库带参直达：?g=xxx（未解锁的游戏统一拦截并弹解锁窗）
     const g = new URLSearchParams(location.search).get('g');
     if (g && GAMES[g]) {
-      if (g === 'uno' && window.NaraCheckin && !window.NaraCheckin.isUnlocked('uno')) {
+      if (window.NaraCheckin && !window.NaraCheckin.isUnlocked(g)) {
         showView('hub');
-        window.NaraCheckin.showUnlock();
+        window.NaraCheckin.showUnlock(g);
       } else {
         openLobby(g);
       }
