@@ -115,6 +115,9 @@
       const dpr = window.devicePixelRatio || 1;
       this.W = w;
       this.canvas.style.height = w + 'px';
+      // backing 宽高必须同时设置，否则 width 停留在默认 300：
+      // 高 DPR 手机上棋盘右侧被裁切、边缘棋子绘制丢失（只显示点位）
+      this.canvas.width = w * dpr;
       this.canvas.height = w * dpr;
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       this.pad = w * 0.04;
@@ -185,6 +188,10 @@
       else { g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#cbd5e1'); }
       ctx.fillStyle = g;
       ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.fill();
+      // 轮廓线：黑棋浅边、白棋深边，任何屏幕上棋子都清晰可辨
+      ctx.lineWidth = Math.max(1, this.cell * .05);
+      ctx.strokeStyle = role === BLACK ? 'rgba(226,232,240,.6)' : 'rgba(71,85,105,.85)';
+      ctx.beginPath(); ctx.arc(x, y, rad - ctx.lineWidth * .5, 0, Math.PI * 2); ctx.stroke();
       ctx.restore();
     }
 

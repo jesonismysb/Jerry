@@ -154,6 +154,13 @@
       body.in-game main { padding-left: 6px; padding-right: 6px; }
       body.in-game #game-mount .glass-card { padding: 8px; border-radius: 1rem; }
       body.in-game #view-game { gap: .5rem; }
+      /* 显式兜底：棋盘容器永远不超过 100vw-28px（main 12 + card 16），
+         即使日志/长按钮等子元素试图撑宽卡片，棋盘也不会溢出屏幕；mx-auto 居中 */
+      body.in-game #game-mount [id$="-boardwrap"],
+      body.in-game #game-mount .board-box {
+        width: min(100%, calc(100vw - 28px));
+        margin-inline: auto;
+      }
     }
 
     /* 手机端通用：加大按钮触控尺寸、拉开按钮间距，防止误触 */
@@ -173,7 +180,7 @@
 
     /* 棋盘高/宽比变量：横屏时按可用高度反推棋盘宽度，保证完整不裁切 */
     #gk-boardwrap, #hb-boardwrap { --ar: 1; }
-    #xq-boardwrap { --ar: 1.124; }
+    #xq-boardwrap { --ar: 1.111; }
     #tq-boardwrap { --ar: 1.075; }
     #ds-boardwrap { --ar: 1.286; }
     .board-box { --ar: 1; }
@@ -217,7 +224,8 @@
       grid-column: 1; grid-row: 1 / 4;
       align-self: center; justify-self: center;
       margin: 0; max-width: none;
-      width: min(100%, calc(var(--bh) / var(--ar, 1)));
+      /* 高度收束 + 视口宽度兜底（预留右栏与边距），双保险防溢出 */
+      width: min(100%, calc(var(--bh) / var(--ar, 1)), calc(100vw - 216px));
     }
 
     /* 飞行棋 / 大富翁：内部容器横排，侧栏固定宽度，棋盘按高度收束 */
@@ -231,7 +239,7 @@
     }
     body.orient-land #game-mount .board-box {
       max-width: none; margin: 0;
-      width: min(100%, var(--bh));
+      width: min(100%, var(--bh), calc(100vw - 232px));
       align-self: center;
     }
     body.orient-land #fx-log,
@@ -242,24 +250,27 @@
     }
 
     /* ---------- 「锁定竖屏」且物理横屏：舞台旋转 90°，内容保持竖排 ----------
-       外层负责旋转与宽高交换，内层正常布局；点击坐标经 getBoundingClientRect
-       自动换算，各游戏模块无需感知（参考 H5 视觉横屏通用两层结构） */
+       外层以视口中心为锚点负责旋转与宽高交换（任何 vw/vh、dvw/dvh 差异下
+       都严格居中、不偏向一侧）；内层正常布局；点击坐标经 getBoundingClientRect
+       自动换算，各游戏模块无需感知 */
     body.orient-rotate { overflow: hidden; height: 100vh; height: 100dvh; }
     body.orient-rotate #orient-stage {
-      position: fixed; top: 0; left: 100vw; z-index: 60;
+      position: fixed; left: 50%; top: 50%; z-index: 60;
       width: 100vh; width: 100dvh;
       height: 100vw; height: 100dvw;
       background: #0b1220;
-      transform: rotate(90deg);
-      transform-origin: top left;
+      transform: translate(-50%, -50%) rotate(90deg);
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 8px;
+      /* 内部内容沿舞台纵轴居中：物理横屏时棋盘位于屏幕中部，
+         两侧留白均衡；内容超高时 auto margin 收为 0，可正常滚动不裁切 */
+      display: flex; flex-direction: column;
     }
-    /* 反向横屏（设备顶部朝右）：逆时针旋转 */
+    body.orient-rotate #game-mount { margin-block: auto; }
+    /* 反向横屏（设备顶部朝右）：逆时针旋转，居中锚点不变 */
     body.orient-rotate.secondary #orient-stage {
-      top: 100vh; top: 100dvh; left: 0;
-      transform: rotate(-90deg);
+      transform: translate(-50%, -50%) rotate(-90deg);
     }
     /* 旋转舞台内：卡片收紧，棋盘按舞台纵轴（物理宽度 100vw）反推宽度，
        预留 ogbar/状态/按钮行的纵向空间，保证整盘完整且无需滚动 */
@@ -604,11 +615,13 @@
   }
 
   const scriptCache = {};
+  const SCRIPT_VER = '20261007';
   function loadScript(src) {
     if (scriptCache[src]) return scriptCache[src];
     scriptCache[src] = new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = src;
+      // 本地游戏脚本带版本号：发布修复后避免浏览器沿用旧缓存
+      s.src = src + (src.indexOf('games/') === 0 ? '?v=' + SCRIPT_VER : '');
       s.onload = resolve;
       s.onerror = () => { delete scriptCache[src]; reject(new Error('脚本加载失败：' + src)); };
       document.head.appendChild(s);

@@ -240,10 +240,15 @@
       const w = this.canvas.clientWidth;
       const dpr = window.devicePixelRatio || 1;
       this.W = w;
-      this.pad = w * 0.045;
+      // 边距必须 >= 边缘棋子半径，保证車/馬/炮等边子完整不被 canvas 边缘裁切；
+      // 棋子半径 = cw*.42 ≈ .0464w，取 pad=.058w 留足描边安全量
+      this.pad = w * 0.058;
       this.cw = (w - this.pad * 2) / 8;
       this.H = this.pad * 2 + this.cw * 9;
       this.canvas.style.height = this.H + 'px';
+      // backing 宽高必须同时设置，否则 width 停留默认 300，高 DPR 手机上
+      // 棋盘右侧数列与棋子被整段裁切
+      this.canvas.width = w * dpr;
       this.canvas.height = this.H * dpr;
       this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
