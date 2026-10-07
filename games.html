@@ -469,16 +469,17 @@
         '联机模式中房主执黑先行；支持重新开局，对局通过 WebRTC 点对点传输。'
       ]
     },
-    xiangqi: {
-      name: '中国象棋', icon: 'fa-solid fa-chess', color: 'bg-rose-400/10 text-rose-300',
-      seats: ['执红 · 先手', '执黑 · 后手'],
-      desc: '楚河汉界，九宫争雄',
+    turtlet: {
+      name: '海龟汤', icon: 'fa-solid fa-mug-hot', color: 'bg-rose-400/10 text-rose-300',
+      seats: null, multi: true, netOnly: true, minN: 4, maxN: 8, peers: 7,
+      desc: '4-8 人联机推理汤题',
       rules: [
-        '红方先行，双方各执 16 枚棋子，轮流在交叉点上走棋，将死对方帥 / 將（或对方无棋可走）即获胜。',
-        '車走直线不限格数；馬走「日」字但有棋子蹩马腿时不可走；炮走直线，吃子需隔一个炮架。',
-        '相 / 象走「田」字，不能过河，田心有棋子（塞象眼）时不可走；仕 / 士在九宫内斜走一格；帥 / 將在九宫内直走一格，且双方帥將不能在无遮挡时直接照面。',
-        '兵 / 卒过河前每步只能向前一格，过河后可左右平移，但始终不能后退。',
-        'AI 分为简单 / 中等 / 困难三档；联机模式房主执红先行。'
+        '纯联机派对游戏（无 AI）：房主创建房间，邀请 3-7 位好友加入，可自选 4-8 人开局，人齐后房主点击开始。',
+        '开局后房主即「汤主」，向所有人公布「汤面」（一个奇怪情境的简短描述），其他玩家是「喝汤人」。',
+        '喝汤人在聊天框内向汤主提问，汤主只能回答三种：「是 / 不是 / 无关」。汤主回答通过点击对应按钮给全员广播。',
+        '喝汤人根据汤主的回答逐步推理出「汤底」（情境的完整真相）。房主可点击「下一题」切换到内置题库的下一道汤题。',
+        '房主可点击「自定义汤题」输入自己的汤面与汤底开局；房主点击「公布汤底」即可揭晓真相并切换下一题。',
+        '房间内置聊天框全员随时交流；座位号仅作显示用，不影响出题。游戏无胜负判定，重在推理过程。'
       ]
     },
     uno: {
@@ -596,7 +597,7 @@
   }
 
   const scriptCache = {};
-  const SCRIPT_VER = '20261007b';
+  const SCRIPT_VER = '20261007c';
   function loadScript(src) {
     if (scriptCache[src]) return scriptCache[src];
     scriptCache[src] = new Promise((resolve, reject) => {
@@ -624,7 +625,7 @@
       const g = GAMES[id];
       // 锁属性：UNO 沿用旧 data-uno-lock；其他付费游戏用通用 data-nc-lock
       const lockAttr = id === 'uno' ? 'data-uno-lock'
-        : 'tiaoqi,doushou,heibai,undercover,langren'.split(',').includes(id) ? `data-nc-lock="${id}"` : '';
+        : 'tiaoqi,doushou,heibai,undercover,langren,turtlet'.split(',').includes(id) ? `data-nc-lock="${id}"` : '';
       const playTag = g.netOnly
         ? '<i class="fa-solid fa-user-group mr-0.5"></i>仅联机 · 无AI'
         : '<i class="fa-solid fa-robot mr-0.5"></i>AI · <i class="fa-solid fa-user-group mr-0.5"></i>联机';

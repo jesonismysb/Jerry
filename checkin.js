@@ -21,7 +21,8 @@
     doushou: 180,     // 斗兽棋
     heibai: 160,      // 黑白棋
     undercover: 250,  // 谁是卧底
-    langren: 300      // 狼人杀
+    langren: 300,     // 狼人杀
+    turtlet: 200      // 海龟汤
   };
 
   /* ---------------- 日期工具（本地时区） ---------------- */
@@ -372,7 +373,8 @@
     doushou:  { name: '斗兽棋',     icon: 'fa-paw',          color: 'bg-orange-400/10 text-orange-300',   tag: 'AI 简单/普通/困难 · WebRTC 联机' },
     undercover: { name: '谁是卧底', icon: 'fa-user-secret',  color: 'bg-fuchsia-400/10 text-fuchsia-300', tag: '4-10 人 · 好友联机 · 语言推理' },
     heibai:   { name: '黑白棋',     icon: 'fa-circle-half-stroke', color: 'bg-teal-400/10 text-teal-300', tag: 'AI 简单/普通/困难 · WebRTC 联机' },
-    langren:  { name: '狼人杀',     icon: 'fa-moon',         color: 'bg-violet-400/10 text-violet-300',   tag: '8-10 人 · 好友联机 · 夜昼博弈' }
+    langren:  { name: '狼人杀',     icon: 'fa-moon',         color: 'bg-violet-400/10 text-violet-300',   tag: '8-10 人 · 好友联机 · 夜昼博弈' },
+    turtlet:  { name: '海龟汤',     icon: 'fa-mug-hot',      color: 'bg-rose-400/10 text-rose-300',        tag: '4-8 人 · 好友联机 · 汤题推理' }
   };
   var pendingGame = 'uno';
 
