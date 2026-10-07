@@ -269,8 +269,16 @@
     </footer>
   </main>
 
+  <!-- 每日签到悬浮挂件（样式与逻辑在 checkin.js，localStorage 本地存储，不影响其他模块） -->
+  <button id="nara-checkin-fab" class="nc-fab" aria-label="每日签到">
+    <i class="fa-solid fa-calendar-day"></i>今日签到
+  </button>
+
   <!-- 全局 Toast 提示容器 -->
   <div id="toast"></div>
+
+  <!-- 签到 & 积分解锁共享模块（纯本地逻辑） -->
+  <script src="./checkin.js"></script>
 
   <script>
   /* ==================================================================

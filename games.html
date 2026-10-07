@@ -12,6 +12,8 @@
   <!-- 与主站同一套 CDN；游戏逻辑全部放在外部文件、按需动态加载 -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+  <!-- 签到积分 & UNO 解锁门禁：大厅初始化时需同步读取解锁状态，故提前加载（本地小文件） -->
+  <script src="./checkin.js"></script>
 
   <script>
     tailwind.config = {
@@ -435,7 +437,7 @@
     grid.innerHTML = Object.keys(GAMES).map((id, i) => {
       const g = GAMES[id];
       return `
-        <button data-g="${id}"
+        <button data-g="${id}" ${id === 'uno' ? 'data-uno-lock' : ''}
                 class="entry-card glass-card p-5 flex flex-col items-center text-center gap-2.5"
                 style="animation-delay:${i * 0.07}s">
           <span class="w-12 h-12 rounded-xl flex items-center justify-center text-xl ${g.color}">
@@ -447,7 +449,14 @@
         </button>`;
     }).join('');
     grid.querySelectorAll('button').forEach(b => {
-      b.addEventListener('click', () => openLobby(b.dataset.g));
+      b.addEventListener('click', () => {
+        // UNO 门禁：未解锁时弹解锁窗，不进大厅
+        if (b.dataset.g === 'uno' && window.NaraCheckin && !window.NaraCheckin.isUnlocked('uno')) {
+          window.NaraCheckin.showUnlock();
+          return;
+        }
+        openLobby(b.dataset.g);
+      });
     });
   }
 
@@ -813,9 +822,16 @@
     // 壁纸在首屏渲染完成后再加载
     setTimeout(loadBackground, 300);
 
-    // 支持从工具库带参直达：?g=gomoku
+    // 支持从工具库带参直达：?g=gomoku（UNO 未解锁时拦截并弹解锁窗）
     const g = new URLSearchParams(location.search).get('g');
-    if (g && GAMES[g]) openLobby(g);
+    if (g && GAMES[g]) {
+      if (g === 'uno' && window.NaraCheckin && !window.NaraCheckin.isUnlocked('uno')) {
+        showView('hub');
+        window.NaraCheckin.showUnlock();
+      } else {
+        openLobby(g);
+      }
+    }
   }
 
   window.GG = window.GG || {};
