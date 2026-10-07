@@ -45,12 +45,15 @@
   let peerLoading = null;
 
   class NetRoom extends Emitter {
-    constructor(gameId) {
+    constructor(gameId, maxPeers) {
       super();
       this.gameId = gameId;
+      this.maxPeers = maxPeers || 1;   // >1 时为多人房间（星型拓扑，房主中转）
       this.code = null;
       this.peer = null;
       this.conn = null;
+      this.conns = new Map();          // 多人模式：seat -> conn（仅房主侧）
+      this.locked = false;             // 开局后锁定，拒绝新加入
       this._dead = false;
     }
 
@@ -105,6 +108,7 @@
     }
 
     _accept(conn) {
+      if (this.maxPeers > 1) { this._acceptMulti(conn); return; }
       if (this.conn) {
         // 仅支持两人对局，多余连接直接关闭
         try { conn.close(); } catch (e) {}
@@ -115,6 +119,59 @@
       conn.on('data', data => this.emit('data', data));
       conn.on('close', () => this._handleClose());
       conn.on('error', () => this._handleClose());
+    }
+
+    /* 多人房间：房主侧接受多个连接，座位号取最小空位（1..maxPeers） */
+    _acceptMulti(conn) {
+      const self = this;
+      const reject = () => {
+        const bye = () => {
+          try { conn.send({ t: 'full' }); } catch (e) {}
+          setTimeout(() => { try { conn.close(); } catch (e) {} }, 300);
+        };
+        if (conn.open) bye(); else conn.on('open', bye);
+      };
+      if (this.locked || this.conns.size >= this.maxPeers) { reject(); return; }
+
+      const ready = () => {
+        if (self._dead) return;
+        if (self.locked || self.conns.size >= self.maxPeers) { reject(); return; }
+        let seat = 1;
+        while (self.conns.has(seat)) seat++;
+        self.conns.set(seat, conn);
+        conn._naraSeat = seat;
+        self.emit('join', seat);
+      };
+      if (conn.open) ready(); else conn.on('open', ready);
+
+      conn.on('data', d => self.emit('data', d, conn._naraSeat));
+      const bye = () => {
+        const seat = conn._naraSeat;
+        if (seat && self.conns.get(seat) === conn) {
+          self.conns.delete(seat);
+          self.emit('leave', seat);
+        }
+      };
+      conn.on('close', bye);
+      conn.on('error', bye);
+    }
+
+    /* 锁定房间并把连接座位号紧凑重排为 1..N（开局时调用） */
+    lock() {
+      this.locked = true;
+      if (this.maxPeers > 1 && this.conns.size) {
+        const list = Array.from(this.conns.values());
+        this.conns.clear();
+        list.forEach((c, i) => { c._naraSeat = i + 1; this.conns.set(i + 1, c); });
+      }
+    }
+
+    peerCount() { return this.conns.size; }
+
+    sendTo(seat, obj) {
+      const c = this.conns.get(seat);
+      if (c && c.open) { c.send(obj); return true; }
+      return false;
     }
 
     /* 加入方 */
@@ -169,6 +226,11 @@
     }
 
     send(obj) {
+      if (this.maxPeers > 1 && this.conns.size) {
+        let ok = false;
+        this.conns.forEach(c => { if (c.open) { c.send(obj); ok = true; } });
+        return ok;
+      }
       if (this.conn && this.conn.open) {
         this.conn.send(obj);
         return true;
@@ -179,6 +241,8 @@
     destroy() {
       this._dead = true;
       try { if (this.conn) this.conn.close(); } catch (e) {}
+      this.conns.forEach(c => { try { c.close(); } catch (e) {} });
+      this.conns.clear();
       try { if (this.peer) this.peer.destroy(); } catch (e) {}
       this.removeAll();
     }

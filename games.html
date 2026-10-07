@@ -213,11 +213,11 @@
         <div id="pane-ai" class="mt-5 space-y-4">
           <div>
             <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-gauge-high text-cyan-300/80 mr-1"></i>AI 难度</p>
-            <div class="flex gap-2">
-              <button class="seg-btn" data-diff="1">简单</button>
-              <button class="seg-btn on" data-diff="2">中等</button>
-              <button class="seg-btn" data-diff="3">困难</button>
-            </div>
+            <div class="flex gap-2" id="diff-segs"></div>
+          </div>
+          <div id="count-row" class="hidden">
+            <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-users text-cyan-300/80 mr-1"></i>玩家数量（空位由 AI 填充）</p>
+            <div class="flex gap-2" id="count-segs"></div>
           </div>
           <div id="seat-row">
             <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-chess-pawn text-cyan-300/80 mr-1"></i>选择先后手</p>
@@ -356,15 +356,16 @@
     },
     uno: {
       name: 'UNO 卡牌', icon: 'fa-solid fa-layer-group', color: 'bg-emerald-400/10 text-emerald-300',
-      seats: null,
-      desc: '经典三色行动牌欢乐对决',
+      seats: null, multi: true,
+      diffs: [[1, '简单'], [2, '普通']],
+      desc: '2-6 人欢乐对决，别忘了喊 UNO',
       rules: [
-        '每人发 7 张牌，轮流出牌：所出牌必须与弃牌堆顶的颜色或数字 / 符号相同，万能牌可任意时候打出。',
-        '没有可出的牌时点击牌堆摸一张牌；若摸到的牌可出可选择打出，否则自动跳过回合。',
-        '功能牌：⊘ 禁手（对手跳过）、⇄ 反转（两人局中等于对手跳过）、+2 罚摸两张并跳过；万能牌可指定颜色，+4 万能牌罚摸四张并跳过（仅当手中没有同色牌时允许使用）。',
-        '当手中只剩 2 张牌、打出倒数第二张时，请及时点击「UNO!」，否则会被罚摸 2 张牌。',
-        '最先出完手牌的一方获胜；牌堆抽空时会把弃牌堆重新洗成新牌堆。',
-        '联机模式由房主发牌并裁判，双方均只能看到自己的手牌。'
+        '支持 2-6 人开局：AI 模式下空位由 AI 填充（难度可选 简单 / 普通）；联机模式最多 6 名玩家加入同一房间。',
+        '每人发 7 张牌，轮流出牌：所出牌必须与弃牌堆顶的颜色、数字或符号相同；变色 / +4 万能牌可随时打出（+4 仅当手中没有当前颜色的牌时允许）。',
+        '功能牌：⊘ 跳过（下家停牌一轮）、⇄ 反转（改变出牌方向，两人局中等于跳过）、+2 下家罚摸两张并跳过、+4 下家罚摸四张并跳过；万能牌打出时需指定新颜色。',
+        '没有可出的牌时点击牌堆摸一张：摸到可出的牌可选择打出或「不要」，否则自动跳过回合。',
+        '打出倒数第二张牌前请点击「UNO!」按钮；忘记喊 UNO 时，下家可点击「举报」罚你摸 2 张牌。',
+        '最先出完手牌的玩家获胜；牌堆抽空时会把弃牌堆重洗为新牌堆。联机模式由房主统一发牌与裁判，每位玩家只能看到自己的手牌。'
       ]
     }
   };
@@ -425,7 +426,7 @@
    * 大厅
    * ================================================================== */
   let lobbyGame = null;
-  let lobbyCfg = { mode: 'ai', diff: 2, seat: 0, nettab: 'auto', side: 'host' };
+  let lobbyCfg = { mode: 'ai', diff: 2, seat: 0, count: 4, nettab: 'auto', side: 'host' };
   let netRoom = null;
   let currentGame = null;
 
@@ -452,10 +453,25 @@
 
   function openLobby(gameId, presetMode) {
     lobbyGame = gameId;
-    lobbyCfg = { mode: presetMode || 'ai', diff: 2, seat: 0, nettab: 'auto', side: 'host' };
+    lobbyCfg = { mode: presetMode || 'ai', diff: 2, seat: 0, count: 4, nettab: 'auto', side: 'host' };
     const g = GAMES[gameId];
     document.getElementById('lobby-title').innerHTML =
       `<i class="${g.icon} ${g.color.split(' ')[1]}"></i>${g.name}`;
+
+    // 难度段（UNO 为 简单/普通 两档，其余游戏三档）
+    const diffs = g.diffs || [[1, '简单'], [2, '中等'], [3, '困难']];
+    document.getElementById('diff-segs').innerHTML = diffs.map(d =>
+      `<button class="seg-btn ${Number(d[0]) === lobbyCfg.diff ? 'on' : ''}" data-diff="${d[0]}">${d[1]}</button>`).join('');
+
+    // 玩家数量段（仅多人游戏如 UNO）
+    const countRow = document.getElementById('count-row');
+    if (g.multi) {
+      countRow.classList.remove('hidden');
+      document.getElementById('count-segs').innerHTML = [2, 3, 4, 5, 6].map(k =>
+        `<button class="seg-btn ${k === lobbyCfg.count ? 'on' : ''}" data-count="${k}">${k} 人</button>`).join('');
+    } else {
+      countRow.classList.add('hidden');
+    }
 
     // 座位段（UNO 无）
     const seatRow = document.getElementById('seat-row');
@@ -481,6 +497,8 @@
       b.classList.toggle('on', Number(b.dataset.diff) === lobbyCfg.diff));
     document.querySelectorAll('[data-seat]').forEach(b =>
       b.classList.toggle('on', Number(b.dataset.seat) === lobbyCfg.seat));
+    document.querySelectorAll('[data-count]').forEach(b =>
+      b.classList.toggle('on', Number(b.dataset.count) === lobbyCfg.count));
     document.querySelectorAll('[data-nettab]').forEach(b =>
       b.classList.toggle('on', b.dataset.nettab === lobbyCfg.nettab));
     document.getElementById('net-auto').classList.toggle('hidden', lobbyCfg.nettab !== 'auto');
@@ -494,12 +512,17 @@
   /* ==================================================================
    * 进入对局
    * ================================================================== */
-  async function startGame(seat) {
+  async function startGame(seat, count) {
     const isNet = lobbyCfg.mode === 'net';
+    const isUno = lobbyGame === 'uno';
+    const diffs = GAMES[lobbyGame].diffs || [[1, '简单'], [2, '中等'], [3, '困难']];
+    const diffRow = diffs.filter(d => Number(d[0]) === lobbyCfg.diff)[0];
     const sub = document.getElementById('game-sub');
     sub.innerHTML = isNet
-      ? '<i class="fa-solid fa-user-group mr-1"></i>联机对战 · 房间号 ' + (netRoom && netRoom.code ? netRoom.code : '手动直连')
-      : '<i class="fa-solid fa-robot mr-1"></i>AI ' + ['', '简单', '中等', '困难'][lobbyCfg.diff];
+      ? '<i class="fa-solid fa-user-group mr-1"></i>联机对战' + (count ? ' · ' + count + ' 人局' : '') +
+        ' · 房间号 ' + (netRoom && netRoom.code ? netRoom.code : '手动直连')
+      : '<i class="fa-solid fa-robot mr-1"></i>AI ' + (diffRow ? diffRow[1] : '') +
+        (isUno ? ' · ' + (count || 2) + ' 人局' : '');
     showView('game');
     const mount = document.getElementById('game-mount');
     mount.innerHTML = '<p class="text-center text-xs text-slate-500 py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在加载游戏资源…</p>';
@@ -507,8 +530,8 @@
       await loadScript('games/' + lobbyGame + '.js');
       mount.innerHTML = '';
       const opts = isNet
-        ? { mode: 'net', seat: seat, room: netRoom, toast: showToast }
-        : { mode: 'ai', diff: lobbyCfg.diff, seat: lobbyCfg.seat, toast: showToast };
+        ? { mode: 'net', seat: seat, count: count || 2, room: netRoom, toast: showToast }
+        : { mode: 'ai', diff: lobbyCfg.diff, seat: lobbyCfg.seat, count: count || lobbyCfg.count || 2, toast: showToast };
       window.GG[lobbyGame].start(mount, opts);
       currentGame = lobbyGame;
     } catch (e) {
@@ -555,17 +578,47 @@
       setRoomStatus('<p class="text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在创建房间…</p>');
       await ensureNet();
       resetRoomStatus();
-      netRoom = new window.NetRoom(lobbyGame);
+      const isUno = lobbyGame === 'uno';
+      netRoom = new window.NetRoom(lobbyGame, isUno ? 5 : 1);
       wireRoomClose();
       const code = await netRoom.host();
-      setRoomStatus(`
-        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>房间已创建，等待好友加入</p>
-        <p class="text-3xl font-mono font-bold tracking-[0.35em] text-cyan-200 my-2">${code}</p>
-        <p class="text-[11px] text-slate-500">请把这 6 位房间号告诉好友</p>`);
-      netRoom.once('connected', () => {
-        netRoom.send({ t: 'start' });
-        startGame(0);
-      });
+      if (isUno) {
+        // UNO 多人房间：房主等待 1-5 名玩家加入后手动开局
+        const renderRoom = () => {
+          const n = 1 + netRoom.peerCount();
+          const names = ['房主（我）'];
+          for (let i = 2; i <= n; i++) names.push('玩家 ' + i);
+          setRoomStatus(`
+            <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>房间已创建，邀请好友加入（${n}/6）</p>
+            <p class="text-3xl font-mono font-bold tracking-[0.35em] text-cyan-200 my-2">${code}</p>
+            <p class="text-[11px] text-slate-500 mb-3">请把这 6 位房间号告诉好友</p>
+            <div class="flex flex-wrap justify-center gap-1.5 my-3">
+              ${names.map(x => `<span class="text-[11px] px-2.5 py-1 rounded-full bg-cyan-400/10 border border-cyan-300/25 text-cyan-100"><i class="fa-solid fa-user mr-1"></i>${x}</span>`).join('')}
+            </div>
+            <button id="btn-room-start" class="btn-primary" ${n < 2 ? 'disabled' : ''}><i class="fa-solid fa-play"></i>开始对局（${n} 人）</button>
+            <p class="text-[11px] text-slate-500 mt-2">2-6 人开局，人齐后点击开始；开始后房间将锁定</p>`);
+          const btn = document.getElementById('btn-room-start');
+          if (btn) btn.addEventListener('click', () => {
+            const total = 1 + netRoom.peerCount();
+            if (total < 2) return;
+            netRoom.lock();
+            for (let s = 1; s <= netRoom.maxPeers; s++) netRoom.sendTo(s, { t: 'start', seat: s, n: total });
+            startGame(0, total);
+          });
+        };
+        renderRoom();
+        netRoom.on('join', renderRoom);
+        netRoom.on('leave', renderRoom);
+      } else {
+        setRoomStatus(`
+          <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>房间已创建，等待好友加入</p>
+          <p class="text-3xl font-mono font-bold tracking-[0.35em] text-cyan-200 my-2">${code}</p>
+          <p class="text-[11px] text-slate-500">请把这 6 位房间号告诉好友</p>`);
+        netRoom.once('connected', () => {
+          netRoom.send({ t: 'start' });
+          startGame(0);
+        });
+      }
     } catch (e) {
       resetRoomStatus();
       showToast(e.message || '创建房间失败，请稍后再试');
@@ -582,8 +635,16 @@
       wireRoomClose();
       await netRoom.join(code);
       setRoomStatus('<p class="text-xs text-slate-400"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>已连接，等待房主开始…</p>');
-      netRoom.once('data', msg => {
-        if (msg && msg.t === 'start') startGame(1);
+      netRoom.on('data', msg => {
+        if (msg && msg.t === 'full') {
+          showToast('房间已满或已开局');
+          resetRoomStatus();
+          return;
+        }
+        if (msg && msg.t === 'start') {
+          if (lobbyGame === 'uno') startGame(msg.seat || 1, msg.n || 2);
+          else startGame(1);
+        }
       });
     } catch (e) {
       resetRoomStatus();
@@ -703,13 +764,14 @@
         syncLobbyUI();
       });
     });
-    document.querySelectorAll('[data-diff]').forEach(b => {
-      b.addEventListener('click', () => { lobbyCfg.diff = Number(b.dataset.diff); syncLobbyUI(); });
-    });
-    // 座位按钮为大厅动态生成，用事件委托保证点击生效
+    // 难度 / 座位 / 人数按钮均为大厅动态生成，用事件委托保证点击生效
     document.addEventListener('click', e => {
+      const db = e.target.closest('[data-diff]');
+      if (db) { lobbyCfg.diff = Number(db.dataset.diff); syncLobbyUI(); return; }
       const sb = e.target.closest('[data-seat]');
-      if (sb) { lobbyCfg.seat = Number(sb.dataset.seat); syncLobbyUI(); }
+      if (sb) { lobbyCfg.seat = Number(sb.dataset.seat); syncLobbyUI(); return; }
+      const cb = e.target.closest('[data-count]');
+      if (cb) { lobbyCfg.count = Number(cb.dataset.count); syncLobbyUI(); }
     });
     document.querySelectorAll('[data-nettab]').forEach(b => {
       b.addEventListener('click', () => {
@@ -722,7 +784,7 @@
       b.addEventListener('click', () => { lobbyCfg.side = b.dataset.side; syncLobbyUI(); });
     });
 
-    document.getElementById('btn-start-ai').addEventListener('click', () => startGame(lobbyCfg.seat));
+    document.getElementById('btn-start-ai').addEventListener('click', () => startGame(lobbyCfg.seat, lobbyCfg.count));
     document.getElementById('btn-create').addEventListener('click', netCreate);
     document.getElementById('btn-join').addEventListener('click', netJoin);
     document.getElementById('join-code').addEventListener('input', e => {

@@ -1,27 +1,63 @@
 /* ==================================================================
- * UNO 卡牌模块（两人局）
- *  108 张标准牌：数字 / 禁手 / 反转 / +2 / 万能 / +4
- *  AI：简单 / 中等 / 困难
- *  联机：房主发牌裁判（主机权威），信令：
- *    客→主 {t:'p',i,color} {t:'d'} {t:'n'} {t:'u'} {t:'again'}
- *    主→客 {t:'s', view}
+ * UNO 卡牌模块（2-6 人）
+ *  108 张标准牌：数字 / 跳过 / 反转 / +2 / 变色 / +4 变色
+ *  模式：AI 单机（空位由 AI 填充，难度 简单/普通）｜ WebRTC 联机（房主权威，最多 6 人）
+ *  规则：打出倒数第二张牌前需喊「UNO!」，忘记喊可被下家举报罚摸 2 张
+ *  联机信令：
+ *    客→主 {t:'p',i,color} {t:'d'} {t:'n'} {t:'u'} {t:'catch'} {t:'again'}
+ *    主→客 {t:'s', view}（view 仅含该玩家自己的手牌，保证信息隐藏）
  * ================================================================== */
 (function () {
   'use strict';
 
-  // 值定义
   const SKIP = 10, REV = 11, D2 = 12, WILD = 13, W4 = 14;
   const COLOR_HEX = ['#ef4444', '#eab308', '#22c55e', '#2563eb'];
   const COLOR_NAME = ['红', '黄', '绿', '蓝'];
 
+  /* ---------------- 音效（WebAudio 合成，零外部资源） ---------------- */
+  const Snd = {
+    ctx: null, on: true,
+    ensure() {
+      if (!this.ctx) {
+        try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { this.ctx = null; }
+      }
+      if (this.ctx && this.ctx.state === 'suspended') { try { this.ctx.resume(); } catch (e) {} }
+      return this.ctx;
+    },
+    tone(f, dur, type, vol, delay) {
+      const ctx = this.ctx;
+      const t = ctx.currentTime + (delay || 0);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.15, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + dur + 0.05);
+    },
+    play(kind) {
+      if (!this.on || !this.ensure()) return;
+      switch (kind) {
+        case 'play':   this.tone(540, .07, 'triangle', .16, 0); this.tone(830, .08, 'triangle', .13, .05); break;
+        case 'action': this.tone(720, .08, 'sawtooth', .09, 0); this.tone(400, .13, 'sawtooth', .09, .07); break;
+        case 'draw':   this.tone(270, .09, 'sine', .15, 0); break;
+        case 'uno':    this.tone(880, .09, 'sine', .2, 0); this.tone(1174, .13, 'sine', .2, .1); break;
+        case 'catch':  this.tone(220, .14, 'square', .1, 0); this.tone(175, .2, 'square', .1, .12); break;
+        case 'win':    [523, 659, 784, 1046].forEach((f, i) => this.tone(f, .15, 'triangle', .18, i * .11)); break;
+        case 'lose':   [392, 330, 262, 196].forEach((f, i) => this.tone(f, .17, 'sine', .15, i * .13)); break;
+      }
+    }
+  };
+  // 首次交互解锁音频上下文
+  document.addEventListener('pointerdown', () => Snd.ensure(), { passive: true });
+
+  /* ---------------- 牌组 ---------------- */
   function makeDeck() {
     const d = [];
     for (let c = 0; c < 4; c++) {
       d.push({ c: c, v: 0 });
       for (let n = 1; n <= 9; n++) { d.push({ c: c, v: n }); d.push({ c: c, v: n }); }
-      for (let k = 0; k < 2; k++) {
-        d.push({ c: c, v: SKIP }); d.push({ c: c, v: REV }); d.push({ c: c, v: D2 });
-      }
+      for (let k = 0; k < 2; k++) { d.push({ c: c, v: SKIP }); d.push({ c: c, v: REV }); d.push({ c: c, v: D2 }); }
     }
     for (let k = 0; k < 4; k++) { d.push({ c: -1, v: WILD }); d.push({ c: -1, v: W4 }); }
     return d;
@@ -29,7 +65,7 @@
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
+      const t = a[i]; a[i] = a[j]; a[j] = t;
     }
     return a;
   }
@@ -37,706 +73,802 @@
     if (card.v <= 9) return String(card.v);
     return { 10: '⊘', 11: '⇄', 12: '+2', 13: 'W', 14: '+4' }[card.v];
   }
+  function cardBg(card) {
+    if (card.c < 0) return 'conic-gradient(#ef4444,#eab308,#22c55e,#2563eb,#ef4444)';
+    return COLOR_HEX[card.c];
+  }
 
+  /* ---------------- 样式（注入一次） ---------------- */
+  const CSS = `
+    .uno-card{position:relative;width:3rem;height:4.4rem;border-radius:.55rem;border:2px solid rgba(255,255,255,.85);
+      box-shadow:0 3px 10px rgba(2,8,23,.5);color:#fff;font-weight:800;display:inline-flex;align-items:center;justify-content:center;
+      flex:none;transition:transform .15s ease,box-shadow .15s ease,opacity .15s ease;cursor:pointer;user-select:none;
+      text-shadow:0 1px 3px rgba(0,0,0,.45);padding:0}
+    @media(min-width:640px){.uno-card{width:3.4rem;height:5rem}}
+    .uno-card .csym{font-size:1.15rem;line-height:1}
+    .uno-card .ccorner{position:absolute;top:2px;left:4px;font-size:.55rem;opacity:.92}
+    .uno-card.mini{width:1.35rem;height:2rem;border-width:1.5px;border-radius:.32rem;cursor:default;box-shadow:0 1px 4px rgba(2,8,23,.4)}
+    .uno-card.big{width:4.2rem;height:6.2rem;cursor:default}
+    .uno-card.big .csym{font-size:1.7rem}
+    .uno-card.playable:hover{transform:translateY(-9px);box-shadow:0 12px 22px rgba(103,232,249,.28)}
+    .uno-card.dim{opacity:.35;filter:saturate(.55);cursor:default}
+    .uno-card.back{background:repeating-linear-gradient(45deg,#0f172a,#0f172a 5px,#155e75 5px,#155e75 10px);border-color:rgba(103,232,249,.45)}
+    .uno-sel{outline:2px solid #67e8f9;outline-offset:2px}
+    @keyframes unoPulse{0%,100%{box-shadow:0 0 0 0 rgba(250,204,21,.55)}50%{box-shadow:0 0 0 9px rgba(250,204,21,0)}}
+    .uno-pulse{animation:unoPulse 1.1s infinite}
+    .uno-badge{transition:all .25s ease}
+    .uno-badge.turn{border-color:rgba(103,232,249,.65);background:rgba(103,232,249,.1);box-shadow:0 0 14px rgba(103,232,249,.18)}
+    .uno-scroll::-webkit-scrollbar{height:5px}
+    .uno-scroll::-webkit-scrollbar-thumb{background:rgba(103,232,249,.25);border-radius:3px}
+  `;
+
+  /* ==================================================================
+   * 主类
+   * ================================================================== */
   class Uno {
     constructor(mount, opts) {
       this.mount = mount;
-      this.opts = opts;
-      this.isNet = opts.mode === 'net';
-      this.amHost = !this.isNet || opts.seat === 0;
+      this.toast = opts.toast || function () {};
+      this.mode = opts.mode;
       this.diff = opts.diff || 2;
-
-      this.unsubs = [];
+      this.mySeat = opts.seat || 0;
+      this.room = opts.room || null;
+      this.isNet = this.mode === 'net';
       this.dead = false;
+      this.timers = [];
+      this._unsub = [];
+      this.pendingPick = -1;      // 等待选色的手牌下标
+      this.lastFxSeq = 0;
+      this._overFxDone = false;
 
-      if (this.amHost) {
-        this.initState();
-        this.build();
-        this.bindNet();
-        this.startRound(true);
+      if (!document.getElementById('uno-style')) {
+        const st = document.createElement('style');
+        st.id = 'uno-style';
+        st.textContent = CSS;
+        document.head.appendChild(st);
+      }
+
+      // 玩家人数与座位
+      this.n = Math.min(6, Math.max(2, opts.count || 2));
+      this.players = [];
+      if (this.isNet) {
+        this.netRole = this.mySeat === 0 ? 'host' : 'guest';
+        for (let i = 0; i < this.n; i++) {
+          this.players.push({ kind: i === this.mySeat ? 'human' : (this.netRole === 'host' ? 'net' : 'net'),
+            name: i === 0 ? '房主' : '玩家 ' + (i + 1) });
+        }
+        if (this.netRole === 'host') this.players[0].name = '房主（你）';
       } else {
-        this.view = null;
-        this.build();
-        this.bindNet();
-        this.renderGuestShell();
+        this.netRole = 'local';
+        this.mySeat = 0;
+        const dLabel = this.diff === 1 ? '简单' : '普通';
+        this.players.push({ kind: 'human', name: '你' });
+        for (let i = 1; i < this.n; i++) this.players.push({ kind: 'ai', name: 'AI·' + dLabel + ' ' + i });
+      }
+
+      // 事件委托（mount 常驻）
+      this._onClick = e => this.handleClick(e);
+      this.mount.addEventListener('click', this._onClick);
+
+      if (this.netRole === 'guest') {
+        this.bindGuest();
+        this.renderWaiting();
+      } else {
+        if (this.netRole === 'host') this.bindHost();
+        this.newGame();
+        this.render();
+        this.pump();
       }
     }
 
-    /* ---------------- 状态初始化（仅房主 / 本地） ---------------- */
-    initState() {
-      this.deck = shuffle(makeDeck());
-      this.discard = [];
-      this.hands = [[], []];
-      this.turn = 1;
-      this.dir = 1;
-      this.color = -1;
-      this.over = false;
-      this.winner = -1;
-      this.phase = 'play';       // play / choice / pickstart
-      this.drawnI = -1;
-      this.unoReady = [false, false];
-      this.unoCalled = [false, false];
-      this.unoTimer = [null, null];
-      this.msg = '';
+    /* ==================== 生命周期 ==================== */
+    delay(fn, ms) {
+      const t = setTimeout(() => { if (!this.dead) fn(); }, ms);
+      this.timers.push(t);
+      return t;
+    }
+    destroy() {
+      this.dead = true;
+      this.timers.forEach(clearTimeout);
+      this._unsub.forEach(un => { try { un(); } catch (e) {} });
+      this.mount.removeEventListener('click', this._onClick);
+      this.mount.innerHTML = '';
     }
 
-    draw(who) {
-      if (this.deck.length === 0) this.rebuildDeck();
-      const card = this.deck.pop();
-      this.hands[who].push(card);
-      return card;
+    /* ==================== 开局 ==================== */
+    newGame() {
+      const deck = shuffle(makeDeck());
+      const hands = [];
+      for (let i = 0; i < this.n; i++) hands.push(deck.splice(0, 7));
+      // 首张牌：+4 重洗
+      let first = deck.pop();
+      while (first.v === W4) { deck.unshift(first); shuffle(deck); first = deck.pop(); }
+
+      this.st = {
+        deck: deck, discard: [first], hands: hands,
+        turn: 0, dir: 1, color: first.c,
+        over: false, winner: -1,
+        phase: 'play', drawnI: -1,
+        catchSeat: -1, catchBy: -1,
+        declared: new Array(this.n).fill(false),
+        fx: { seq: 0, kind: '' },
+        msg: ''
+      };
+      this.pendingPick = -1;
+      this._overFxDone = false;
+
+      // 首张功能牌结算
+      if (first.v === WILD) {
+        this.st.phase = 'pickstart';
+        this.st.msg = '首张为变色牌，请 ' + this.nameOf(0) + ' 选择起始颜色';
+      } else if (first.v === SKIP) {
+        this.st.turn = this.nextSeat(0);
+        this.st.msg = '首张为跳过，' + this.nameOf(0) + ' 停牌一轮';
+      } else if (first.v === REV) {
+        this.st.dir = -1;
+        this.st.msg = '首张为反转，逆时针出牌';
+      } else if (first.v === D2) {
+        this.drawCards(0, 2, true);
+        this.st.turn = this.nextSeat(0);
+        this.st.msg = '首张为 +2，' + this.nameOf(0) + ' 罚摸 2 张并停牌';
+      } else {
+        this.st.msg = '对局开始，轮到 ' + this.nameOf(0);
+      }
+      this.pushViews();
     }
-    rebuildDeck() {
-      if (this.discard.length <= 1) return;
-      const top = this.discard.pop();
-      this.deck = shuffle(this.discard);
-      this.discard = [top];
+
+    nameOf(s) {
+      if (s === this.mySeat) return '你';
+      return this.players[s] ? this.players[s].name : '玩家 ' + (s + 1);
     }
-    penalty(who, n) {
-      for (let i = 0; i < n; i++) this.draw(who);
+    nextSeat(s) { return ((s + this.st.dir) % this.n + this.n) % this.n; }
+    advanceFrom(s, steps) { return ((s + this.st.dir * steps) % this.n + this.n) % this.n; }
+    fx(kind) {
+      this.st.fx = { seq: this.st.fx.seq + 1, kind: kind };
+      if (this.netRole !== 'guest') Snd.play(kind);
     }
 
     playable(card) {
-      const top = this.discard[this.discard.length - 1];
-      if (card.c === -1) {
-        if (card.v === W4) {
-          // 规则：仅当手中没有与当前颜色相同的牌时允许 +4
-          return !this.hands[this.turn].some(x => x.c === this.color);
+      if (card.c < 0) return true;
+      const top = this.st.discard[this.st.discard.length - 1];
+      return card.c === this.st.color || card.v === top.v;
+    }
+    canW4(hand, i) {
+      const st = this.st;
+      return !hand.some((c, idx) => idx !== i && c.c === st.color);
+    }
+
+    drawCards(who, k, silent) {
+      const st = this.st;
+      const out = [];
+      for (let i = 0; i < k; i++) {
+        if (!st.deck.length) {
+          // 弃牌堆（除顶）重洗为牌堆
+          const top = st.discard.pop();
+          if (!st.discard.length) { st.discard.push(top); break; }
+          st.deck = shuffle(st.discard);
+          st.discard = [top];
         }
-        return true;
+        const card = st.deck.pop();
+        st.hands[who].push(card);
+        out.push(card);
       }
-      return card.c === this.color || card.v === top.v;
+      if (!silent && out.length) this.fx('draw');
+      return out;
     }
 
-    /* ---------------- 开局发牌 ---------------- */
-    startRound(initial) {
-      if (!initial) this.initState();
-      for (let i = 0; i < 7; i++) { this.draw(0); this.draw(1); }
-      // 翻首张（+4 重洗）
-      let first;
-      do {
-        if (this.deck.length === 0) this.rebuildDeck();
-        first = this.deck.pop();
-        if (first.v === W4) { this.deck.unshift(first); shuffle(this.deck); }
-      } while (first.v === W4);
-      this.discard.push(first);
-      this.color = first.c;
-
-      // 起始牌效果：默认先手为 1 号（非发牌方）
-      this.turn = 1;
-      if (first.c === -1) {
-        this.phase = 'pickstart';
-        this.msg = '首张是万能牌，请先手指定颜色';
-      } else if (first.v === SKIP || first.v === REV) {
-        this.turn = 0;
-        this.msg = '首张功能牌，先手被跳过，房主先出';
-      } else if (first.v === D2) {
-        this.penalty(1, 2);
-        this.turn = 0;
-        this.msg = '先手被罚摸 2 张并跳过';
-      } else {
-        this.msg = '对局开始';
-      }
-
-      this.afterTurnChange();
+    /* ==================== 动作 ==================== */
+    clearCatchIfActor(who) {
+      const st = this.st;
+      if (st.catchSeat >= 0 && st.catchBy === who) { st.catchSeat = -1; st.catchBy = -1; }
     }
 
-    advance(n) {
-      n = n || 1;
-      this.turn = (this.turn + this.dir * n) % 2;
-      if (this.turn < 0) this.turn += 2;
-    }
-
-    /* 每次行动后：继续 AI / 等待 / 结束 */
-    afterTurnChange() {
-      this.pushView();
-      if (this.over) return;
-      if (!this.isNet && this.turn === 1) setTimeout(() => this.aiAct(), 650);
-      if (this.isNet && this.turn === 0 && this.amHost && this.phase === 'play') { /* 房主自己 */ }
-    }
-
-    /* ---------------- 出牌提交 ---------------- */
     commitPlay(who, i, chosenColor) {
-      if (this.over || who !== this.turn) return false;
-      const hand = this.hands[who];
-      if (i < 0 || i >= hand.length) return false;
+      const st = this.st;
+      if (st.over || st.turn !== who) return false;
+      if (st.phase !== 'play' && st.phase !== 'choice') return false;
+      if (st.phase === 'choice' && i !== st.drawnI) return false;
+      const hand = st.hands[who];
       const card = hand[i];
-      if (!this.playable(card)) return false;
-
-      hand.splice(i, 1);
-      this.discard.push(card);
-      this.phase = 'play';
-      this.drawnI = -1;
-
-      if (card.c === -1) this.color = chosenColor;
-      else this.color = card.c;
-
-      // UNO 判定
-      if (hand.length === 1) {
-        if (this.unoReady[who]) this.unoCalled[who] = true;
-        if (!this.unoCalled[who]) this.openUnoWindow(who);
+      if (!card || !this.playable(card)) return false;
+      if (card.v === W4 && !this.canW4(hand, i)) {
+        if (who === this.mySeat) this.toast('手中还有当前颜色的牌，不能出 +4');
+        return false;
       }
+      if (card.c < 0 && (chosenColor == null || chosenColor < 0)) return false;
+
+      this.clearCatchIfActor(who);
+      hand.splice(i, 1);
+      st.discard.push(card);
+      st.color = card.c >= 0 ? card.c : chosenColor;
+      st.phase = 'play'; st.drawnI = -1;
+
+      const name = this.nameOf(who);
+      // UNO 喊牌判定（2 → 1）
+      let vulnerable = false;
+      if (hand.length === 1) {
+        if (st.declared[who]) {
+          st.declared[who] = false;
+          st.msg = name + ' 喊出了 UNO！';
+          this.fx('uno');
+        } else {
+          vulnerable = true;
+          st.catchSeat = who;
+          st.msg = name + ' 只剩 1 张牌却没喊 UNO？下家可以举报！';
+        }
+      } else if (hand.length > 2) {
+        st.declared[who] = false;
+      }
+
       if (hand.length === 0) {
-        this.over = true;
-        this.winner = who;
-        this.msg = (who === 0 ? '房主' : '对手') + '出完了所有手牌';
-        this.pushView();
+        st.over = true; st.winner = who;
+        st.catchSeat = -1; st.catchBy = -1;
+        st.msg = name + ' 出完了所有手牌！';
         return true;
       }
 
-      // 功能牌效果
+      let steps = 1;
       if (card.v === SKIP) {
-        this.msg = '禁手：对手跳过回合';
-        this.advance(2);
+        steps = 2; this.fx('action');
+        if (hand.length !== 1) st.msg = name + ' 打出跳过，' + this.nameOf(this.nextSeat(who)) + ' 停牌一轮';
       } else if (card.v === REV) {
-        this.dir *= -1;
-        this.msg = '反转：你继续出牌';
-        // 两人局中反转等于对手被跳过
-        this.advance(2);
+        st.dir *= -1;
+        steps = this.n === 2 ? 2 : 1;
+        this.fx('action');
+        if (hand.length !== 1) st.msg = name + ' 打出反转，方向调转';
       } else if (card.v === D2) {
-        const next = (who + 1) % 2;
-        this.penalty(next, 2);
-        this.msg = '对手罚摸 2 张并跳过';
-        this.advance(2);
+        const t = this.nextSeat(who);
+        this.drawCards(t, 2, true);
+        st.declared[t] = false;
+        steps = 2; this.fx('action');
+        st.msg = name + ' 打出 +2，' + this.nameOf(t) + ' 罚摸 2 张并跳过';
       } else if (card.v === W4) {
-        const next = (who + 1) % 2;
-        this.penalty(next, 4);
-        this.msg = '对手罚摸 4 张并跳过';
-        this.advance(2);
+        const t = this.nextSeat(who);
+        this.drawCards(t, 4, true);
+        st.declared[t] = false;
+        steps = 2; this.fx('action');
+        st.msg = name + ' 打出 +4，' + this.nameOf(t) + ' 罚摸 4 张并跳过';
+      } else if (card.c < 0) {
+        this.fx('action');
+        if (hand.length !== 1) st.msg = name + ' 打出变色，指定 ' + COLOR_NAME[st.color];
       } else {
-        this.msg = '';
-        this.advance(1);
+        this.fx('play');
       }
-      this.afterTurnChange();
+      st.turn = this.advanceFrom(who, steps);
+      if (vulnerable) st.catchBy = st.turn; // 由下一个实际行动的玩家举报
       return true;
     }
 
-    /* 摸牌（玩家主动） */
     humanDraw(who) {
-      if (this.over || who !== this.turn || this.phase !== 'play') return;
-      const card = this.draw(who);
-      this.msg = '摸到一张牌';
+      const st = this.st;
+      if (st.over || st.turn !== who || st.phase !== 'play') return false;
+      this.clearCatchIfActor(who);
+      const got = this.drawCards(who, 1);
+      if (!got.length) { st.turn = this.advanceFrom(who, 1); return true; }
+      st.declared[who] = false;
+      const card = got[0];
       if (this.playable(card)) {
-        this.phase = 'choice';
-        this.drawnI = this.hands[who].length - 1;
+        st.phase = 'choice';
+        st.drawnI = st.hands[who].length - 1;
+        st.msg = this.nameOf(who) + ' 摸到一张可出的牌';
       } else {
-        this.msg = '无牌可出，跳过回合';
-        this.phase = 'play';
-        this.advance(1);
-        this.afterTurnChange();
-        return;
+        st.turn = this.advanceFrom(who, 1);
+        st.msg = this.nameOf(who) + ' 摸牌后仍无牌可出，跳过';
       }
-      this.pushView();
+      return true;
     }
 
-    humanPass(who) {
-      if (this.over || who !== this.turn || this.phase !== 'choice') return;
-      this.phase = 'play';
-      this.drawnI = -1;
-      this.msg = '选择不出，跳过回合';
-      this.advance(1);
-      this.afterTurnChange();
+    pass(who) {
+      const st = this.st;
+      if (st.over || st.turn !== who || st.phase !== 'choice') return false;
+      this.clearCatchIfActor(who);
+      st.phase = 'play'; st.drawnI = -1;
+      st.turn = this.advanceFrom(who, 1);
+      st.msg = this.nameOf(who) + ' 选择不出，跳过';
+      return true;
     }
 
-    /* ---------------- UNO 喊牌窗口 ---------------- */
-    openUnoWindow(who) {
-      this.msg = (who === 0 ? '你' : '对手') + '只剩一张牌，请尽快喊 UNO';
-      this.unoTimer[who] = setTimeout(() => {
-        if (this.dead || this.over) return;
-        if (!this.unoCalled[who] && this.hands[who].length === 1) {
-          this.penalty(who, 2);
-          this.msg = '未及时喊 UNO，罚摸 2 张';
-          this.pushView();
+    declareUno(who) {
+      const st = this.st;
+      if (st.over) return false;
+      if (st.hands[who].length !== 2 || st.declared[who]) return false;
+      st.declared[who] = true;
+      this.fx('uno');
+      st.msg = this.nameOf(who) + ' 喊了 UNO！';
+      return true;
+    }
+
+    doCatch(by) {
+      const st = this.st;
+      if (st.over || st.catchSeat < 0 || st.catchBy !== by) return false;
+      const target = st.catchSeat;
+      st.catchSeat = -1; st.catchBy = -1;
+      this.drawCards(target, 2, true);
+      st.declared[target] = false;
+      this.fx('catch');
+      st.msg = this.nameOf(by) + ' 举报成功，' + this.nameOf(target) + ' 忘喊 UNO 罚摸 2 张';
+      return true;
+    }
+
+    pickStartColor(who, color) {
+      const st = this.st;
+      if (st.over || st.phase !== 'pickstart' || who !== 0) return false;
+      st.color = color;
+      st.phase = 'play';
+      st.msg = '起始颜色定为 ' + COLOR_NAME[color] + '，轮到 ' + this.nameOf(0);
+      this.fx('play');
+      return true;
+    }
+
+    afterAction() {
+      this.pushViews();
+      this.render();
+      this.pump();
+    }
+
+    /* ==================== AI ==================== */
+    pump() {
+      if (this.dead || this.st.over) return;
+      const st = this.st;
+      if (st.phase === 'pickstart') {
+        if (this.players[0].kind === 'ai') {
+          this.delay(() => { this.pickStartColor(0, this.aiColor(0)); this.afterAction(); }, 700);
         }
-      }, 3000);
-    }
-    callUno(who) {
-      const hand = this.hands[who];
-      if (hand.length === 1 || hand.length === 2) {
-        this.unoCalled[who] = true;
-        if (hand.length === 2) this.unoReady[who] = true;
-        this.msg = (who === 0 ? '你' : '对手') + '喊了 UNO！';
-        this.pushView();
+        return; // 人类先手选色时等待
       }
+      const seat = st.turn;
+      if (this.players[seat].kind !== 'ai') return;
+      this.delay(() => this.aiTurn(seat), 650 + Math.random() * 550);
     }
 
-    /* ---------------- AI ---------------- */
-    aiAct() {
-      if (this.dead || this.over || this.turn !== 1) return;
-      const hand = this.hands[1];
+    aiTurn(seat) {
+      if (this.dead || this.st.over) return;
+      const st = this.st;
+      if (st.turn !== seat) return;
 
-      // 起始万能牌：AI 指定颜色，之后仍由 AI 出牌
-      if (this.phase === 'pickstart') {
-        this.color = this.aiPickColor();
-        this.phase = 'play';
-        this.msg = 'AI 指定了' + COLOR_NAME[this.color];
-        this.afterTurnChange();
+      // AI 作为下家可以举报
+      if (st.catchSeat >= 0 && st.catchBy === seat) {
+        const p = this.diff === 1 ? 0.5 : 0.9;
+        if (Math.random() < p) this.doCatch(seat);
+        else { st.catchSeat = -1; st.catchBy = -1; }
+      }
+
+      if (st.phase === 'choice') {
+        const playIt = this.diff === 1 ? Math.random() < 0.55 : this.aiWantPlayDrawn(seat);
+        if (playIt) this.commitAiCard(seat, st.drawnI);
+        else this.pass(seat);
+        this.afterAction();
         return;
       }
+      if (st.phase !== 'play') return;
 
-      const playableIdx = [];
-      hand.forEach((card, i) => { if (this.playable(card)) playableIdx.push(i); });
-
-      if (playableIdx.length === 0) {
-        const card = this.draw(1);
-        if (this.playable(card) && (this.diff > 1 || Math.random() < .5)) {
-          this.aiCommit(hand.length - 1);
-        } else {
-          this.msg = 'AI 无牌可出，跳过';
-          this.advance(1);
-          this.afterTurnChange();
-        }
+      const hand = st.hands[seat];
+      const idxs = [];
+      for (let i = 0; i < hand.length; i++) {
+        if (!this.playable(hand[i])) continue;
+        if (hand[i].v === W4 && !this.canW4(hand, i)) continue;
+        idxs.push(i);
+      }
+      if (!idxs.length) {
+        this.humanDraw(seat);
+        this.afterAction();
         return;
       }
-
-      const i = this.diff === 1 ? this.aiEasy(playableIdx) : this.aiPick(playableIdx);
-      this.aiCommit(i);
-    }
-
-    aiCommit(i) {
-      const card = this.hands[1][i];
-      let color = 0;
-      if (card.c === -1) {
-        color = this.diff === 1 ? Math.floor(Math.random() * 4) : this.aiPickColor();
+      // 打出倒数第二张前先喊 UNO（简单 80% / 普通 95% 记得喊）
+      if (hand.length === 2) {
+        const remember = this.diff === 1 ? 0.8 : 0.95;
+        if (Math.random() < remember) st.declared[seat] = true;
       }
-      // AI 自动喊 UNO
-      if (this.hands[1].length <= 2) {
-        this.unoReady[1] = true;
-        this.unoCalled[1] = true;
-      }
-      this.commitPlay(1, i, color);
+      const pick = this.diff === 1 ? idxs[Math.floor(Math.random() * idxs.length)] : this.aiPick(seat, idxs);
+      this.commitAiCard(seat, pick);
+      this.afterAction();
     }
 
-    aiEasy(idx) {
-      return idx[Math.floor(Math.random() * idx.length)];
+    commitAiCard(seat, i) {
+      const card = this.st.hands[seat][i];
+      const color = card.c < 0 ? this.aiColor(seat) : -1;
+      this.commitPlay(seat, i, color);
     }
 
-    aiScore(card) {
-      const opp = this.hands[0].length;
-      const own = this.hands[1].length;
-      let s;
-      if (card.v <= 9) s = card.v;
-      else if (card.v === SKIP || card.v === REV) {
-        s = 22 + (this.diff === 3 && opp <= 3 ? 45 : 0);
-      } else if (card.v === D2) {
-        s = 30 + (this.diff === 3 && opp <= 4 ? 60 : 0);
-      } else if (card.v === WILD) {
-        s = this.diff === 3 ? (own <= 4 ? 40 : 14) : 16;
-      } else {
-        s = this.diff === 3 ? (opp <= 2 ? 120 : 8) : 10;
-      }
-      if (this.diff === 3 && own <= 4 && card.c !== -1) s *= 1.5;
-      return s;
+    aiColor(seat) {
+      const hand = this.st.hands[seat];
+      const cnt = [0, 0, 0, 0];
+      hand.forEach(c => { if (c.c >= 0) cnt[c.c]++; });
+      let best = 0;
+      for (let c = 1; c < 4; c++) if (cnt[c] > cnt[best]) best = c;
+      return best;
     }
 
-    aiPick(idx) {
-      let best = -1, bestS = -Infinity;
-      for (const i of idx) {
-        const s = this.aiScore(this.hands[1][i]);
+    aiWantPlayDrawn(seat) { return true; }
+
+    aiPick(seat, idxs) {
+      const st = this.st, hand = st.hands[seat];
+      const nextN = st.hands[this.nextSeat(seat)].length;
+      let best = idxs[0], bestS = -1e9;
+      for (const i of idxs) {
+        const c = hand[i];
+        let s = Math.random() * 3;
+        if (c.v === W4) s += (hand.length <= 3 || nextN <= 3) ? 70 : 4;
+        else if (c.v === WILD) s += hand.length <= 3 ? 40 : 6;
+        else if (c.v === D2) s += 12 + (nextN <= 4 ? 50 : 0);
+        else if (c.v === SKIP || c.v === REV) s += 10 + (nextN <= 3 ? 45 : 0);
+        else s += 20 - c.v * 0.3 + (c.c === st.color ? 6 : 0);
+        if (hand.length <= 4 && c.c >= 0) s *= 1.3;
         if (s > bestS) { bestS = s; best = i; }
       }
       return best;
     }
 
-    aiPickColor() {
-      const cnt = [0, 0, 0, 0];
-      this.hands[1].forEach(card => { if (card.c >= 0) cnt[card.c]++; });
-      let best = 0;
-      for (let c = 1; c < 4; c++) if (cnt[c] > cnt[best]) best = c;
-      if (this.diff === 3) {
-        // 困难：把功能牌也计入颜色选择
-        this.hands[1].forEach(card => {
-          if (card.c >= 0 && card.v >= SKIP) cnt[card.c] += 1;
-        });
-        for (let c = 0; c < 4; c++) if (cnt[c] > cnt[best]) best = c;
-      }
-      return best;
+    /* ==================== 联机：房主 ==================== */
+    bindHost() {
+      const room = this.room;
+      this._unsub.push(room.on('data', (msg, seat) => {
+        if (this.dead || !msg) return;
+        if (seat == null) seat = 1; // 手动信令两人局
+        if (seat <= 0 || seat >= this.n) return;
+        this.onRemote(msg, seat);
+      }));
+      this._unsub.push(room.on('leave', seat => {
+        if (this.dead || seat == null || seat <= 0 || seat >= this.n) return;
+        // 断线玩家由 AI 托管，牌局继续
+        if (this.players[seat].kind === 'net') {
+          this.players[seat].kind = 'ai';
+          this.players[seat].name += '（离线·AI）';
+          this.toast(this.players[seat].name.replace('（离线·AI）', '') + ' 已离开，由 AI 接管');
+          if (!this.st.over) this.afterAction();
+        }
+      }));
     }
 
-    /* ---------------- 联机视图同步 ---------------- */
-    guestView() {
+    onRemote(msg, seat) {
+      const st = this.st;
+      switch (msg.t) {
+        case 'p':
+          if (st.turn === seat && (st.phase === 'play' || st.phase === 'choice')) {
+            this.commitPlay(seat, msg.i | 0, msg.color == null ? -1 : msg.color | 0);
+            this.afterAction();
+          }
+          break;
+        case 'd':
+          if (this.humanDraw(seat)) this.afterAction();
+          break;
+        case 'n':
+          if (this.pass(seat)) this.afterAction();
+          break;
+        case 'u':
+          if (this.declareUno(seat)) this.afterAction();
+          break;
+        case 'catch':
+          if (this.doCatch(seat)) this.afterAction();
+          break;
+        case 'c':
+          if (this.pickStartColor(seat, msg.color | 0)) this.afterAction();
+          break;
+        case 'again':
+          if (st.over) { this.newGame(); this.render(); this.pump(); }
+          break;
+      }
+    }
+
+    makeView(seat) {
+      const st = this.st;
       return {
-        hand: this.hands[1].map(c => c),
-        opp: this.hands[0].length,
-        top: this.discard[this.discard.length - 1],
-        color: this.color,
-        turn: this.turn,
-        dir: this.dir,
-        deckN: this.deck.length,
-        phase: this.phase,
-        drawnI: this.drawnI,
-        msg: this.msg,
-        over: this.over,
-        winner: this.winner,
-        unoReady: this.unoReady[1],
-        unoCalled: this.unoCalled[1]
+        seat: seat, n: this.n,
+        names: this.players.map((p, i) => i === seat ? '你' : p.name),
+        kinds: this.players.map(p => p.kind),
+        hand: st.hands[seat],
+        counts: st.hands.map(h => h.length),
+        top: st.discard[st.discard.length - 1],
+        color: st.color, turn: st.turn, dir: st.dir,
+        phase: st.turn === seat ? st.phase : 'play',
+        drawnI: (st.turn === seat && st.phase === 'choice') ? st.drawnI : -1,
+        catchSeat: st.catchSeat, catchBy: st.catchBy,
+        over: st.over, winner: st.winner,
+        msg: st.msg, declared: st.declared[seat],
+        fx: st.fx, deckN: st.deck.length
       };
     }
-    pushView() {
-      this.render();
-      if (this.isNet && this.opts.room && this.amHost) {
-        this.opts.room.send({ t: 's', view: this.guestView() });
+
+    pushViews() {
+      if (this.netRole !== 'host') return;
+      const canDirect = typeof this.room.sendTo === 'function';
+      for (let s = 1; s < this.n; s++) {
+        if (this.players[s].kind !== 'net') continue;
+        const msg = { t: 's', view: this.makeView(s) };
+        if (canDirect) this.room.sendTo(s, msg);
+        else this.room.send(msg); // 手动信令两人局：单连接直接发
       }
     }
 
-    bindNet() {
-      if (!this.isNet) return;
-      this.unsubs.push(this.opts.room.on('data', msg => this.onRemote(msg)));
-      if (!this.amHost) {
-        this.unsubs.push(this.opts.room.on('close', () => {
-          if (!this.dead) this.opts.toast('房主已离开对局');
-        }));
+    /* ==================== 联机：客户端 ==================== */
+    bindGuest() {
+      const room = this.room;
+      this.view = null;
+      this._unsub.push(room.on('data', msg => {
+        if (this.dead || !msg) return;
+        if (msg.t === 's') {
+          this.view = msg.view;
+          this.playGuestFx();
+          this.render();
+        }
+      }));
+    }
+
+    playGuestFx() {
+      const v = this.view;
+      if (!v || !v.fx) return;
+      if (v.fx.seq > this.lastFxSeq) {
+        this.lastFxSeq = v.fx.seq;
+        if (v.fx.kind) Snd.play(v.fx.kind);
       }
     }
 
-    onRemote(msg) {
-      if (!msg) return;
-      if (this.amHost) {
-        // 房主接收客人意图：UNO 呼叫 / 再次开局不受回合限制
-        if (msg.t === 'u') { this.callUno(1); return; }
-        if (msg.t === 'again') { this.startRound(false); return; }
-        if (msg.t === 'c') {
-          // 客人为先手时指定起始颜色，指定后仍由客人出牌
-          if (this.phase === 'pickstart' && this.turn === 1) {
-            this.color = msg.color;
-            this.phase = 'play';
-            this.msg = '对手指定了' + COLOR_NAME[msg.color];
-            this.pushView();
-          }
-          return;
-        }
-        if (this.turn !== 1) return;
-        if (msg.t === 'p') {
-          this.commitPlay(1, msg.i, msg.color);
-        } else if (msg.t === 'd') {
-          this.humanDraw(1);
-        } else if (msg.t === 'n') {
-          this.humanPass(1);
-        }
+    renderWaiting() {
+      this.mount.innerHTML =
+        '<p class="text-center text-xs text-slate-500 py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在同步牌局数据…</p>';
+    }
+
+    /* ==================== 本地 / 客端统一动作入口 ==================== */
+    actPlay(i, color) {
+      if (this.netRole === 'guest') this.room.send({ t: 'p', i: i, color: color == null ? -1 : color });
+      else { this.commitPlay(this.mySeat, i, color == null ? -1 : color); this.afterAction(); }
+    }
+    actDraw() {
+      if (this.netRole === 'guest') this.room.send({ t: 'd' });
+      else { this.humanDraw(this.mySeat); this.afterAction(); }
+    }
+    actPass() {
+      if (this.netRole === 'guest') this.room.send({ t: 'n' });
+      else { this.pass(this.mySeat); this.afterAction(); }
+    }
+    actUno() {
+      if (this.netRole === 'guest') this.room.send({ t: 'u' });
+      else { this.declareUno(this.mySeat); this.afterAction(); }
+    }
+    actCatch() {
+      if (this.netRole === 'guest') this.room.send({ t: 'catch' });
+      else { this.doCatch(this.mySeat); this.afterAction(); }
+    }
+    actPickColor(color) {
+      if (this.pendingPick >= 0) {
+        const i = this.pendingPick;
+        this.pendingPick = -1;
+        this.actPlay(i, color);
+        return;
+      }
+      // 起始变色选色
+      if (this.netRole === 'guest') this.room.send({ t: 'c', color: color });
+      else { this.pickStartColor(this.mySeat, color); this.afterAction(); }
+    }
+    actAgain() {
+      if (this.netRole === 'guest') {
+        this.room.send({ t: 'again' });
+        this.toast('已请求再来一局，等待房主确认');
       } else {
-        // 客人接收状态
-        if (msg.t === 's') { this.view = msg.view; this.renderGuest(); }
-        else if (msg.t === 'again') { this.opts.toast('房主开启了新对局'); }
+        this.newGame();
+        this.render();
+        this.pump();
       }
     }
 
-    /* ---------------- UI 构建 ---------------- */
-    build() {
-      const wrap = document.createElement('div');
-      wrap.className = 'glass-card panel-card p-3 sm:p-5';
-      wrap.innerHTML = `
-        <div class="flex items-center justify-between gap-2 flex-wrap mb-3">
-          <p id="uno-msg" class="text-xs text-slate-300"></p>
-          <p class="text-[11px] text-slate-500">牌堆 <span id="uno-deckn">–</span> 张</p>
-        </div>
-        <div id="uno-table"></div>
-        <div class="flex items-center justify-center gap-2 mt-4 flex-wrap">
-          <button id="uno-restart" class="btn-ghost"><i class="fa-solid fa-rotate-right"></i>重新开局</button>
-        </div>
-        <div id="uno-colorpick" class="hidden fixed inset-0 z-[70] items-center justify-center"
-             style="background:rgba(2,6,23,.7);backdrop-filter:blur(3px)">
-          <div class="text-center">
-            <p class="text-sm text-slate-200 mb-4">请选择指定的颜色</p>
-            <div class="grid grid-cols-2 gap-3 w-52">
-              ${[0,1,2,3].map(c => `
-                <button data-c="${c}" class="h-16 rounded-xl text-white font-bold"
-                        style="background:${COLOR_HEX[c]}">${COLOR_NAME[c]}</button>`).join('')}
+    /* ==================== 渲染 ==================== */
+    currentView() {
+      if (this.netRole === 'guest') return this.view;
+      return this.makeView(this.mySeat);
+    }
+
+    guestPlayable(card, v) {
+      if (card.c < 0) return true;
+      return card.c === v.color || card.v === v.top.v;
+    }
+
+    handleClick(e) {
+      const el = e.target.closest('[data-uno]');
+      if (!el) return;
+      const act = el.dataset.uno;
+      const v = this.currentView();
+      if (!v) return;
+      switch (act) {
+        case 'card': {
+          const i = Number(el.dataset.i);
+          if (v.over || v.turn !== v.seat) return;
+          if (v.phase === 'choice' && i !== v.drawnI) return;
+          if (v.phase !== 'play' && v.phase !== 'choice') return;
+          const card = v.hand[i];
+          if (!card || !this.guestPlayable(card, v)) return;
+          if (card.c < 0) {
+            this.pendingPick = i;
+            this.render();
+          } else {
+            this.actPlay(i, -1);
+          }
+          break;
+        }
+        case 'draw':  if (!v.over && v.turn === v.seat && v.phase === 'play') this.actDraw(); break;
+        case 'pass':  if (!v.over && v.turn === v.seat && v.phase === 'choice') this.actPass(); break;
+        case 'uno':   this.actUno(); break;
+        case 'catch': this.actCatch(); break;
+        case 'color': this.actPickColor(Number(el.dataset.color)); break;
+        case 'cancelpick': this.pendingPick = -1; this.render(); break;
+        case 'again': this.actAgain(); break;
+        case 'exit': {
+          const btn = document.getElementById('game-leave');
+          if (btn) btn.click();
+          break;
+        }
+        case 'snd':
+          Snd.on = !Snd.on;
+          if (Snd.on) Snd.play('play');
+          this.render();
+          break;
+      }
+    }
+
+    cardHtml(card, cls, attrs) {
+      return `<button class="uno-card ${cls || ''}" style="background:${cardBg(card)}" ${attrs || ''}>
+        <span class="ccorner">${cardSym(card)}</span><span class="csym">${cardSym(card)}</span></button>`;
+    }
+
+    render() {
+      const v = this.currentView();
+      if (!v) { this.renderWaiting(); return; }
+      const me = v.seat;
+      const myTurn = v.turn === me && !v.over;
+
+      /* ---------- 对手条 ---------- */
+      let oppHtml = '';
+      for (let i = 0; i < v.n; i++) {
+        if (i === me) continue;
+        const isTurn = v.turn === i && !v.over;
+        const icon = v.kinds[i] === 'ai' ? 'fa-robot' : 'fa-user';
+        const unoTag = v.counts[i] === 1
+          ? '<span class="text-[9px] px-1.5 py-px rounded-full bg-rose-400/20 border border-rose-300/40 text-rose-200 font-bold">UNO</span>' : '';
+        const catchBtn = (v.catchSeat === i && v.catchBy === me && !v.over)
+          ? `<button data-uno="catch" class="uno-pulse mt-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-400/20 border border-amber-300/50 text-amber-200 font-bold">举报!</button>` : '';
+        let backs = '';
+        const showN = Math.min(v.counts[i], 7);
+        for (let k = 0; k < showN; k++) backs += '<span class="uno-card mini back" style="margin-left:' + (k ? '-0.85rem' : '0') + '"></span>';
+        oppHtml += `
+          <div class="uno-badge ${isTurn ? 'turn' : ''} flex flex-col items-center px-2.5 py-1.5 rounded-xl border border-white/10 bg-white/5 flex-none">
+            <span class="text-[10.5px] text-slate-300 max-w-[4.6rem] truncate"><i class="fa-solid ${icon} text-cyan-300/70 mr-0.5"></i>${v.names[i]}</span>
+            <span class="flex items-center mt-1 h-8">${backs || '<span class="text-[10px] text-slate-500">0 张</span>'}</span>
+            <span class="text-[10px] text-slate-400">${v.counts[i]} 张 ${unoTag}</span>
+            ${catchBtn}
+          </div>`;
+      }
+
+      /* ---------- 中央区 ---------- */
+      const topCard = v.top;
+      const dirIcon = v.dir === 1 ? 'fa-rotate-right' : 'fa-rotate-left';
+      const turnText = v.over
+        ? (v.winner === me ? '🎉 你赢了！' : v.names[v.winner] + ' 获胜')
+        : (myTurn ? '轮到你出牌' : '等待 ' + v.names[v.turn] + ' 出牌');
+      const drawActive = myTurn && v.phase === 'play';
+      const centerRight = v.phase === 'pickstart' && v.turn === me && !v.over
+        ? `<div class="text-center">
+             <p class="text-[11px] text-amber-200 mb-2">首张为变色牌，请选择起始颜色</p>
+             <div class="flex gap-2 justify-center">
+               ${[0, 1, 2, 3].map(c => `<button data-uno="color" data-color="${c}" class="w-9 h-9 rounded-full border-2 border-white/70 shadow-lg" style="background:${COLOR_HEX[c]}"></button>`).join('')}
+             </div>
+           </div>`
+        : `<div class="text-center px-2">
+             <p class="text-xs text-slate-300"><i class="fa-solid ${dirIcon} text-cyan-300/80 mr-1"></i>${turnText}</p>
+             <p class="text-[11px] text-cyan-200/80 mt-1 min-h-[1rem]">${v.msg || ''}</p>
+           </div>`;
+
+      /* ---------- 我的手牌 ---------- */
+      let handHtml = '';
+      v.hand.forEach((card, i) => {
+        let cls = '';
+        if (v.over || !myTurn || (v.phase !== 'play' && v.phase !== 'choice')) cls = 'dim';
+        else if (v.phase === 'choice') cls = (i === v.drawnI) ? 'playable uno-sel' : 'dim';
+        else cls = this.guestPlayable(card, v) ? 'playable' : 'dim';
+        handHtml += this.cardHtml(card, cls, `data-uno="card" data-i="${i}"`);
+      });
+
+      const canUno = !v.over && v.hand.length === 2 && !v.declared;
+      const unoBtn = v.declared
+        ? '<button class="btn-ghost text-amber-200 border-amber-300/40" disabled><i class="fa-solid fa-check"></i>已喊 UNO</button>'
+        : `<button data-uno="uno" class="${canUno ? 'uno-pulse' : ''} text-[12.5px] px-4 py-1.5 rounded-full font-bold border transition-all
+             ${canUno ? 'bg-amber-400/25 border-amber-300/60 text-amber-100' : 'bg-white/5 border-white/10 text-slate-500'}">UNO!</button>`;
+      const passBtn = (myTurn && v.phase === 'choice')
+        ? '<button data-uno="pass" class="btn-ghost"><i class="fa-solid fa-forward-step"></i>不要</button>' : '';
+      const catchBtnMain = (v.catchSeat >= 0 && v.catchBy === me && !v.over)
+        ? `<button data-uno="catch" class="uno-pulse text-[12.5px] px-4 py-1.5 rounded-full font-bold bg-amber-400/25 border border-amber-300/60 text-amber-100"><i class="fa-solid fa-flag mr-1"></i>举报 ${v.names[v.catchSeat]}!</button>` : '';
+
+      /* ---------- 结算弹层 ---------- */
+      let overHtml = '';
+      if (v.over) {
+        const win = v.winner === me;
+        if (!this._overFxDone) {
+          this._overFxDone = true;
+          Snd.play(win ? 'win' : 'lose');
+        }
+        const summary = v.counts.map((c, i) =>
+          `<span class="text-[10.5px] px-2 py-0.5 rounded-full ${i === v.winner ? 'bg-amber-400/20 text-amber-200 border border-amber-300/40' : 'bg-white/5 text-slate-400 border border-white/10'}">${v.names[i]} ${i === v.winner ? '胜出' : '剩 ' + c + ' 张'}</span>`
+        ).join('');
+        overHtml = `
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(2,6,23,.72);backdrop-filter:blur(4px)">
+            <div class="glass-card panel-card w-full max-w-sm p-6 text-center">
+              <p class="text-4xl mb-2">${win ? '🎉' : '😢'}</p>
+              <p class="text-lg font-bold ${win ? 'text-amber-300' : 'text-slate-200'}">${win ? '你赢了！' : v.names[v.winner] + ' 获胜'}</p>
+              <div class="flex flex-wrap justify-center gap-1.5 my-4">${summary}</div>
+              <div class="flex gap-2 justify-center">
+                <button data-uno="again" class="btn-primary"><i class="fa-solid fa-rotate-right"></i>再来一局</button>
+                <button data-uno="exit" class="btn-ghost"><i class="fa-solid fa-arrow-left-long"></i>返回大厅</button>
+              </div>
+            </div>
+          </div>`;
+      }
+
+      /* ---------- 选色弹层 ---------- */
+      let pickHtml = '';
+      if (this.pendingPick >= 0 && !v.over) {
+        pickHtml = `
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(2,6,23,.6);backdrop-filter:blur(3px)">
+            <div class="glass-card panel-card w-full max-w-xs p-5 text-center">
+              <p class="text-sm font-semibold text-slate-100 mb-3">选择要变成的颜色</p>
+              <div class="flex gap-3 justify-center mb-4">
+                ${[0, 1, 2, 3].map(c => `<button data-uno="color" data-color="${c}" class="w-11 h-11 rounded-full border-2 border-white/70 shadow-lg active:scale-95 transition" style="background:${COLOR_HEX[c]}" title="${COLOR_NAME[c]}"></button>`).join('')}
+              </div>
+              <button data-uno="cancelpick" class="btn-ghost"><i class="fa-solid fa-xmark"></i>取消</button>
+            </div>
+          </div>`;
+      }
+
+      this.mount.innerHTML = `
+        <div class="space-y-3 select-none">
+          <div class="flex gap-2 overflow-x-auto pb-1 uno-scroll justify-start sm:justify-center">${oppHtml}</div>
+
+          <div class="glass-card panel-card p-3 sm:p-4">
+            <div class="flex items-center justify-center gap-4 sm:gap-8">
+              <div class="flex flex-col items-center gap-1">
+                <button data-uno="draw" class="uno-card back ${drawActive ? 'playable' : 'dim'}" ${drawActive ? '' : 'disabled'}>
+                  <span class="csym" style="font-size:1rem">UNO</span>
+                </button>
+                <span class="text-[10px] text-slate-400">牌堆 ${v.deckN}</span>
+              </div>
+              <div class="flex flex-col items-center gap-1">
+                ${this.cardHtml(topCard, 'big', 'disabled')}
+                <span class="text-[10px] text-slate-400 flex items-center gap-1">当前颜色
+                  <span class="inline-block w-2.5 h-2.5 rounded-full border border-white/60" style="background:${v.color >= 0 ? COLOR_HEX[v.color] : '#64748b'}"></span>
+                  ${v.color >= 0 ? COLOR_NAME[v.color] : '—'}
+                </span>
+              </div>
+              ${centerRight}
             </div>
           </div>
-        </div>
-        <div id="uno-resultmask" class="hidden fixed inset-0 z-[75] items-center justify-center px-6"
-             style="background:rgba(2,6,23,.72);backdrop-filter:blur(3px)">
-          <div class="text-center glass-card panel-card p-7">
-            <p id="uno-resulttxt" class="text-2xl font-bold mb-4"></p>
-            <button id="uno-resultagain" class="btn-primary"><i class="fa-solid fa-rotate-right"></i>再来一局</button>
-          </div>
-        </div>`;
-      this.mount.appendChild(wrap);
 
-      wrap.querySelector('#uno-restart').addEventListener('click', () => this.requestRestart());
-      wrap.querySelector('#uno-resultagain').addEventListener('click', () => this.requestRestart());
-      wrap.querySelectorAll('[data-c]').forEach(b => {
-        b.addEventListener('click', () => this.onColorPicked(Number(b.dataset.c)));
-      });
-    }
-
-    requestRestart() {
-      if (this.isNet) {
-        if (!this.amHost) {
-          this.opts.room.send({ t: 'again' });
-          this.opts.toast('已向房主请求新对局');
-          return;
-        }
-        this.startRound(false);
-      } else {
-        this.startRound(false);
-      }
-    }
-
-    /* 颜色选择弹窗 */
-    askColor(cb) {
-      this._colorCb = cb;
-      const mask = this.mount.querySelector('#uno-colorpick');
-      mask.classList.remove('hidden'); mask.classList.add('flex');
-    }
-    onColorPicked(c) {
-      const mask = this.mount.querySelector('#uno-colorpick');
-      mask.classList.add('hidden'); mask.classList.remove('flex');
-      if (this._colorCb) { const cb = this._colorCb; this._colorCb = null; cb(c); }
-    }
-
-    cardHTML(card, opts) {
-      opts = opts || {};
-      if (opts.back) {
-        return `<div class="uno-card rounded-lg flex items-center justify-center font-bold select-none"
-                  style="background:linear-gradient(135deg,#0e7490,#1e1b4b);border:1px solid rgba(103,232,249,.4)">
-                  <span class="text-cyan-200 text-lg"><i class="fa-solid fa-star"></i></span>
-                </div>`;
-      }
-      const wild = card.c === -1;
-      const bg = wild
-        ? 'linear-gradient(135deg,#1e293b,#0f172a)'
-        : COLOR_HEX[card.c];
-      const darkTxt = !wild && card.c === 1;
-      const sym = cardSym(card);
-      const wildRing = wild
-        ? `<span class="absolute inset-1 rounded-md" style="background:conic-gradient(#ef4444 0 25%,#eab308 0 50%,#22c55e 0 75%,#2563eb 0);opacity:.85"></span>
-           <span class="absolute inset-[14px] rounded-full bg-slate-900"></span>` : '';
-      return `
-        <div class="uno-card relative rounded-lg flex items-center justify-center font-extrabold select-none"
-             style="background:${bg};border:1px solid rgba(255,255,255,.25);color:${darkTxt ? '#1e293b' : '#fff'}">
-          ${wildRing}
-          <span class="absolute top-0.5 left-1 text-[9px] leading-none z-10">${sym}</span>
-          <span class="relative z-10 text-xl ${wild ? 'text-white' : ''}">${sym}</span>
-        </div>`;
-    }
-
-    /* 房主 / 本地渲染 */
-    render() {
-      const table = this.mount.querySelector('#uno-table');
-      if (!table) return;
-      const myTurn = this.turn === 0;
-      const oppN = this.hands[1].length;
-      const top = this.discard[this.discard.length - 1];
-      const canDraw = myTurn && this.phase === 'play';
-      const canPickStart = this.phase === 'pickstart' && (!this.isNet);
-
-      table.innerHTML = `
-        <style>
-          .uno-card { width:3rem; height:4.5rem; }
-          @media (min-width:640px){ .uno-card { width:3.5rem; height:5.2rem; } }
-          .hand-card { transition:transform .15s ease; cursor:pointer; }
-          .hand-card:hover { transform:translateY(-8px); }
-          .hand-card.disabled { opacity:.45; cursor:default; }
-          .hand-card.disabled:hover { transform:none; }
-        </style>
-        <!-- 对手 -->
-        <div class="flex items-center justify-center gap-2 mb-3">
-          <span class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm">
-            <i class="fa-solid fa-user-group text-slate-300"></i>
-          </span>
-          <div class="flex">
-            ${Array.from({ length: Math.min(oppN, 7) }).map(() =>
-              `<div class="-ml-3 first:ml-0 scale-[.78]">${this.cardHTML(null, { back: true })}</div>`).join('')}
-          </div>
-          <span class="text-xs text-slate-400 ml-1">${oppN} 张</span>
-        </div>
-
-        <!-- 中央牌区 -->
-        <div class="flex items-center justify-center gap-5 sm:gap-8 py-3">
-          <div class="text-center">
-            <button id="pile-draw" ${canDraw || canPickStart ? '' : 'disabled'}
-                    class="hand-card ${canDraw || canPickStart ? '' : 'disabled'}">
-              ${this.cardHTML(null, { back: true })}
-            </button>
-            <p class="text-[10.5px] text-slate-500 mt-1.5">摸牌</p>
-          </div>
-          <div class="text-center">
-            <div>${top ? this.cardHTML(top) : ''}</div>
-            <p class="text-[10.5px] mt-1.5" style="color:${this.color >= 0 ? COLOR_HEX[this.color] : '#94a3b8'}">
-              <i class="fa-solid fa-droplet"></i> ${this.color >= 0 ? COLOR_NAME[this.color] + '色' : '未定'}
-            </p>
+          <div class="glass-card panel-card p-3 sm:p-4">
+            <div class="flex items-center justify-between gap-2 mb-2 flex-wrap">
+              <p class="text-[11px] text-slate-400"><i class="fa-solid fa-hand text-cyan-300/70 mr-1"></i>你的手牌（${v.hand.length} 张）</p>
+              <div class="flex items-center gap-2">
+                ${catchBtnMain}
+                ${passBtn}
+                ${unoBtn}
+                <button data-uno="snd" class="btn-ghost !px-2.5" title="音效开关">
+                  <i class="fa-solid ${Snd.on ? 'fa-volume-high' : 'fa-volume-xmark'}"></i>
+                </button>
+              </div>
+            </div>
+            <div class="flex gap-1.5 overflow-x-auto pb-1 uno-scroll">${handHtml}</div>
           </div>
         </div>
-
-        <p class="text-center text-[11px] text-slate-400 mb-2">
-          <i class="fa-solid fa-${this.dir === 1 ? 'arrow-down' : 'arrow-up'} mr-1"></i>${myTurn ? '你的回合' : '对手回合'}
-          ${this.phase === 'choice' ? ' · 摸到的牌可打出或不要' : ''}
-        </p>
-
-        <!-- 操作按钮 -->
-        <div class="flex items-center justify-center gap-2 mb-2 flex-wrap">
-          ${this.phase === 'choice' ? `
-            <button id="btn-pass" class="btn-ghost"><i class="fa-solid fa-ban"></i>不要</button>` : ''}
-          <button id="btn-uno"
-                  class="btn-primary ${this.hands[0].length <= 2 ? '' : 'opacity-40'}"
-                  ${this.hands[0].length <= 2 ? '' : 'disabled'}>
-            <i class="fa-solid fa-bullhorn"></i>UNO!</button>
-        </div>
-
-        <!-- 我的手牌 -->
-        <div class="flex items-center justify-center flex-wrap gap-1.5 pt-2">
-          ${this.hands[0].map((card, i) => {
-            const canPlay = myTurn && (this.phase === 'play' || this.phase === 'choice')
-                            && this.playable(card);
-            return `<button class="hand-card ${canPlay ? '' : 'disabled'}" data-i="${i}">
-                      ${this.cardHTML(card)}</button>`;
-          }).join('')}
-        </div>`;
-
-      this.mount.querySelector('#uno-msg').textContent = this.msg || '';
-      this.mount.querySelector('#uno-deckn').textContent = this.deck.length;
-
-      // 绑定
-      const drawBtn = table.querySelector('#pile-draw');
-      drawBtn.addEventListener('click', () => {
-        if (this.phase === 'pickstart') {
-          this.askColor(c => {
-            this.color = c; this.phase = 'play';
-            this.msg = '指定了' + COLOR_NAME[c];
-            // 先手仍是 AI，交给 AI 出牌
-            this.afterTurnChange();
-          });
-          return;
-        }
-        this.humanDraw(0);
-      });
-      const passBtn = table.querySelector('#btn-pass');
-      if (passBtn) passBtn.addEventListener('click', () => this.humanPass(0));
-      table.querySelector('#btn-uno').addEventListener('click', () => this.callUno(0));
-      table.querySelectorAll('[data-i]').forEach(b => {
-        b.addEventListener('click', () => {
-          if (!myTurn) return;
-          const i = Number(b.dataset.i);
-          const card = this.hands[0][i];
-          if (!this.playable(card)) return;
-          if (card.c === -1) {
-            this.askColor(c => this.commitPlay(0, i, c));
-          } else {
-            this.commitPlay(0, i, 0);
-          }
-        });
-      });
-
-      if (this.over) this.showResult(this.winner === 0);
-    }
-
-    /* ---------------- 客人薄客户端 ---------------- */
-    renderGuestShell() {
-      const table = this.mount.querySelector('#uno-table');
-      if (table) table.innerHTML = '<p class="text-center text-xs text-slate-500 py-10">等待房主发牌…</p>';
-    }
-    renderGuest() {
-      const v = this.view;
-      const table = this.mount.querySelector('#uno-table');
-      const myTurn = v.turn === 1;
-
-      table.innerHTML = `
-        <style>
-          .uno-card { width:3rem; height:4.5rem; }
-          @media (min-width:640px){ .uno-card { width:3.5rem; height:5.2rem; } }
-          .hand-card { transition:transform .15s ease; cursor:pointer; }
-          .hand-card:hover { transform:translateY(-8px); }
-          .hand-card.disabled { opacity:.45; cursor:default; }
-          .hand-card.disabled:hover { transform:none; }
-        </style>
-        <div class="flex items-center justify-center gap-2 mb-3">
-          <span class="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-sm">
-            <i class="fa-solid fa-user-group text-slate-300"></i>
-          </span>
-          <div class="flex">
-            ${Array.from({ length: Math.min(v.opp, 7) }).map(() =>
-              `<div class="-ml-3 first:ml-0 scale-[.78]">${this.cardHTML(null, { back: true })}</div>`).join('')}
-          </div>
-          <span class="text-xs text-slate-400 ml-1">${v.opp} 张</span>
-        </div>
-
-        <div class="flex items-center justify-center gap-5 sm:gap-8 py-3">
-          <div class="text-center">
-            <button id="pile-draw" class="hand-card ${myTurn && v.phase === 'play' ? '' : 'disabled'}"
-                    ${myTurn && v.phase === 'play' ? '' : 'disabled'}>
-              ${this.cardHTML(null, { back: true })}
-            </button>
-            <p class="text-[10.5px] text-slate-500 mt-1.5">摸牌</p>
-          </div>
-          <div class="text-center">
-            <div>${this.cardHTML(v.top)}</div>
-            <p class="text-[10.5px] mt-1.5" style="color:${v.color >= 0 ? COLOR_HEX[v.color] : '#94a3b8'}">
-              <i class="fa-solid fa-droplet"></i> ${v.color >= 0 ? COLOR_NAME[v.color] + '色' : '未定'}
-            </p>
-          </div>
-        </div>
-
-        <p class="text-center text-[11px] text-slate-400 mb-2">
-          <i class="fa-solid fa-${v.dir === 1 ? 'arrow-down' : 'arrow-up'} mr-1"></i>${myTurn ? '你的回合' : '对手回合'}
-          ${v.phase === 'choice' ? ' · 摸到的牌可打出或不要' : ''}
-          ${v.phase === 'pickstart' ? ' · 请先指定颜色' : ''}
-        </p>
-
-        <div class="flex items-center justify-center gap-2 mb-2 flex-wrap">
-          ${v.phase === 'choice' ? '<button id="btn-pass" class="btn-ghost"><i class="fa-solid fa-ban"></i>不要</button>' : ''}
-          <button id="btn-uno" class="btn-primary ${v.hand.length <= 2 ? '' : 'opacity-40'}"
-                  ${v.hand.length <= 2 ? '' : 'disabled'}>
-            <i class="fa-solid fa-bullhorn"></i>UNO!</button>
-        </div>
-
-        <div class="flex items-center justify-center flex-wrap gap-1.5 pt-2">
-          ${v.hand.map((card, i) => {
-            const canPlay = myTurn && (v.phase === 'play' || v.phase === 'choice');
-            return `<button class="hand-card ${canPlay ? '' : 'disabled'}" data-i="${i}">
-                      ${this.cardHTML(card)}</button>`;
-          }).join('')}
-        </div>`;
-
-      this.mount.querySelector('#uno-msg').textContent = v.msg || '';
-      this.mount.querySelector('#uno-deckn').textContent = v.deckN;
-
-      const room = this.opts.room;
-      table.querySelector('#pile-draw').addEventListener('click', () => {
-        if (v.phase === 'pickstart') {
-          this.askColor(c => room.send({ t: 'c', color: c }));
-          return;
-        }
-        room.send({ t: 'd' });
-      });
-      const passBtn = table.querySelector('#btn-pass');
-      if (passBtn) passBtn.addEventListener('click', () => room.send({ t: 'n' }));
-      table.querySelector('#btn-uno').addEventListener('click', () => room.send({ t: 'u' }));
-      table.querySelectorAll('[data-i]').forEach(b => {
-        b.addEventListener('click', () => {
-          if (!myTurn) return;
-          const i = Number(b.dataset.i);
-          const card = v.hand[i];
-          if (card.c === -1) {
-            this.askColor(c => room.send({ t: 'p', i: i, color: c }));
-          } else {
-            room.send({ t: 'p', i: i, color: 0 });
-          }
-        });
-      });
-
-      if (v.over) this.showResult(v.winner === 1);
-    }
-
-    showResult(iWon) {
-      const mask = this.mount.querySelector('#uno-resultmask');
-      const txt = this.mount.querySelector('#uno-resulttxt');
-      txt.textContent = iWon ? '你赢了！' : '你输了';
-      txt.className = 'text-2xl font-bold mb-4 ' + (iWon ? 'text-green-400' : 'text-rose-400');
-      mask.classList.remove('hidden'); mask.classList.add('flex');
-    }
-
-    stop() {
-      this.dead = true;
-      if (this.unoTimer) this.unoTimer.forEach(t => clearTimeout(t));
-      this.unsubs.forEach(un => { try { un(); } catch (e) {} });
-      this.mount.innerHTML = '';
+        ${overHtml}
+        ${pickHtml}`;
     }
   }
 
+  /* ---------------- 模块出口（与其他游戏同构） ---------------- */
   window.GG = window.GG || {};
   window.GG.uno = {
-    start(mount, opts) { this._inst = new Uno(mount, opts); return this._inst; },
-    stop() { if (this._inst) { this._inst.stop(); this._inst = null; } }
+    _inst: null,
+    start(mount, opts) {
+      this.stop();
+      this._inst = new Uno(mount, opts);
+    },
+    stop() {
+      if (this._inst) { this._inst.destroy(); this._inst = null; }
+    }
   };
 })();
