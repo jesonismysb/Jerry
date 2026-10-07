@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="奈良的棋类桌游厅 - 五子棋、中国象棋、UNO卡牌，支持AI单机与网页联机对战" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>棋类桌游 · 奈良</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <!-- 与主站同一套 CDN；游戏逻辑全部放在外部文件、按需动态加载 -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { accent: '#67e8f9' } } }
+    };
+  </script>
+
+  <style>
+    html, body { height: 100%; overflow-x: hidden; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    }
+    .glass-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(103, 232, 249, 0.35);
+      box-shadow: 0 14px 40px rgba(8, 145, 178, 0.22);
+    }
+    .panel-card, .panel-card:hover { transform: none; }
+
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+      font-size: 13px; font-weight: 500; color: #ecfeff;
+      padding: .5rem 1.15rem; border-radius: 999px;
+      background: linear-gradient(to right, rgba(8,145,178,.85), rgba(14,165,233,.85));
+      border: 1px solid rgba(103, 232, 249, 0.4);
+      box-shadow: 0 6px 20px rgba(8, 145, 178, 0.25);
+      transition: all .25s ease; cursor: pointer;
+    }
+    .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 6px 24px rgba(103,232,249,.35); }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+      font-size: 12.5px; color: #cbd5e1;
+      padding: .45rem .9rem; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      transition: all .25s ease; cursor: pointer;
+    }
+    .btn-ghost:hover { color: #67e8f9; border-color: rgba(103, 232, 249, 0.4); background: rgba(103, 232, 249, 0.08); }
+
+    /* 分段选择（难度 / 座位 / 档位） */
+    .seg-btn {
+      flex: 1; min-width: 0;
+      padding: .55rem .4rem; font-size: 12.5px; border-radius: .8rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+      color: #cbd5e1; cursor: pointer; transition: all .2s ease;
+      white-space: nowrap;
+    }
+    .seg-btn:hover { border-color: rgba(103,232,249,.35); }
+    .seg-btn.on {
+      background: rgba(103,232,249,.12); border-color: rgba(103,232,249,.6);
+      color: #a5f3fc; font-weight: 600;
+    }
+
+    .tool-input {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      color: #e2e8f0; border-radius: .8rem;
+      padding: .65rem .9rem; font-size: 14px;
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .tool-input::placeholder { color: #64748b; }
+    .tool-input:focus {
+      outline: none; border-color: rgba(103, 232, 249, 0.45);
+      box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12);
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    main > * { animation: fadeUp .6s ease both; }
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .entry-card { animation: cardIn .5s ease both; }
+
+    #toast {
+      position: fixed; left: 50%;
+      bottom: calc(32px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.92);
+      color: #ecfeff; font-size: 14px;
+      padding: 10px 20px; border-radius: 999px;
+      box-shadow: 0 8px 24px rgba(8, 145, 178, .35);
+      transition: opacity .3s ease, transform .3s ease;
+      z-index: 99; white-space: nowrap; max-width: 90vw; overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* 规则弹窗 */
+    #modal-mask {
+      position: fixed; inset: 0; z-index: 80;
+      background: rgba(2, 6, 23, .66); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    #modal-mask.show { display: flex; }
+    .modal-box {
+      width: 100%; max-width: 460px; max-height: 84vh; overflow-y: auto;
+      background: rgba(15, 23, 42, .96);
+      border: 1px solid rgba(103,232,249,.25); border-radius: 1.1rem;
+      box-shadow: 0 20px 60px rgba(2,8,23,.6);
+    }
+    .modal-box::-webkit-scrollbar { width: 6px; }
+    .modal-box::-webkit-scrollbar-thumb { background: rgba(103,232,249,.3); border-radius: 3px; }
+
+    /* 等待联机时的呼吸点 */
+    @keyframes pulseDot { 0%,100%{opacity:.3} 50%{opacity:1} }
+    .pulse-dot { animation: pulseDot 1.2s infinite; }
+
+    #bg-overlay { transition: opacity .8s ease; }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <!-- 背景层（与主站同一张壁纸，懒生成） -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <img id="bg-img" src="" alt="" class="w-full h-full object-cover opacity-80"
+         onerror="this.style.display='none'" />
+    <div id="bg-overlay"
+         style="background: linear-gradient(180deg, rgba(2,6,23,.78) 0%, rgba(2,6,23,.6) 45%, rgba(2,6,23,.9) 100%);"></div>
+  </div>
+
+  <!-- 顶部导航 -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-3xl mx-auto px-4 h-14 flex items-center gap-3">
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-dice text-cyan-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">奈良 · 棋类桌游厅</h1>
+      </div>
+      <div class="min-w-[86px]"></div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- ========== 视图一：游戏大厅 ========== -->
+    <div id="view-hub">
+      <h2 class="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2 px-1">
+        <span class="w-1 h-4 rounded-full bg-gradient-to-b from-amber-300 to-rose-500"></span>
+        选择一款游戏，支持 AI 单机与好友联机
+      </h2>
+      <div id="hub-grid" class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4"></div>
+      <p class="text-[11.5px] text-slate-500 mt-4 px-1 leading-relaxed">
+        <i class="fa-solid fa-shield-halved text-cyan-300/60 mr-1"></i>
+        联机基于浏览器 WebRTC 点对点直连，对局数据不经过任何我方服务器；游戏脚本仅在进入游戏时加载，不影响工具库打开速度。
+      </p>
+    </div>
+
+    <!-- ========== 视图二：模式 / 房间大厅 ========== -->
+    <div id="view-lobby" class="hidden">
+      <button id="lobby-back"
+              class="text-sm text-slate-300 hover:text-cyan-300 inline-flex items-center gap-2 mb-4 transition-colors">
+        <i class="fa-solid fa-arrow-left-long"></i> 返回游戏大厅
+      </button>
+
+      <section class="glass-card panel-card p-4 sm:p-6">
+        <div class="flex items-center justify-between gap-2">
+          <h3 id="lobby-title" class="text-base sm:text-lg font-semibold flex items-center gap-2"></h3>
+          <button id="btn-rules" class="btn-ghost shrink-0">
+            <i class="fa-solid fa-book-open"></i><span class="hidden sm:inline">游戏规则</span>
+          </button>
+        </div>
+
+        <!-- 模式切换 -->
+        <div class="flex gap-2 mt-5">
+          <button class="seg-btn on" data-mode="ai" style="max-width:160px"><i class="fa-solid fa-robot mr-1"></i>AI 单机对战</button>
+          <button class="seg-btn" data-mode="net" style="max-width:160px"><i class="fa-solid fa-user-group mr-1"></i>联机对战</button>
+        </div>
+
+        <!-- AI 设置 -->
+        <div id="pane-ai" class="mt-5 space-y-4">
+          <div>
+            <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-gauge-high text-cyan-300/80 mr-1"></i>AI 难度</p>
+            <div class="flex gap-2">
+              <button class="seg-btn" data-diff="1">简单</button>
+              <button class="seg-btn on" data-diff="2">中等</button>
+              <button class="seg-btn" data-diff="3">困难</button>
+            </div>
+          </div>
+          <div id="seat-row">
+            <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-chess-pawn text-cyan-300/80 mr-1"></i>选择先后手</p>
+            <div class="flex gap-2" id="seat-segs"></div>
+          </div>
+          <button id="btn-start-ai" class="btn-primary w-full sm:w-auto">
+            <i class="fa-solid fa-play"></i>开始对局
+          </button>
+        </div>
+
+        <!-- 联机设置 -->
+        <div id="pane-net" class="mt-5 hidden space-y-4">
+          <div class="flex gap-2">
+            <button class="seg-btn on" data-nettab="auto" style="max-width:200px"><i class="fa-solid fa-bolt mr-1"></i>房间号匹配</button>
+            <button class="seg-btn" data-nettab="manual" style="max-width:200px"><i class="fa-solid fa-plug mr-1"></i>手动信令</button>
+          </div>
+
+          <!-- 房间号匹配 -->
+          <div id="net-auto" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p class="text-xs text-slate-300 font-medium mb-1"><i class="fa-solid fa-house-chimney text-cyan-300 mr-1"></i>创建房间</p>
+                <p class="text-[11px] text-slate-500 leading-relaxed mb-3">生成房间号并分享给好友，好友输入相同房间号即可加入。</p>
+                <button id="btn-create" class="btn-primary w-full"><i class="fa-solid fa-shuffle"></i>创建房间</button>
+              </div>
+              <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                <p class="text-xs text-slate-300 font-medium mb-1"><i class="fa-solid fa-right-to-bracket text-cyan-300 mr-1"></i>加入房间</p>
+                <p class="text-[11px] text-slate-500 leading-relaxed mb-3">输入好友分享的 6 位房间号。</p>
+                <div class="flex gap-2">
+                  <input id="join-code" inputmode="numeric" maxlength="6" class="tool-input flex-1 font-mono tracking-[0.3em] text-center" placeholder="房间号" />
+                  <button id="btn-join" class="btn-primary shrink-0">加入</button>
+                </div>
+              </div>
+            </div>
+            <!-- 房间状态区 -->
+            <div id="room-status" class="hidden rounded-xl border border-cyan-300/20 bg-slate-950/50 p-4 text-center"></div>
+          </div>
+
+          <!-- 手动信令（免第三方服务器兜底） -->
+          <div id="net-manual" class="hidden space-y-3">
+            <p class="text-[11.5px] text-slate-500 leading-relaxed">
+              当房间号服务不可用时使用：双方通过复制 / 粘贴一段信令文本完成 WebRTC 直连，全程不经过任何中转服务器。
+            </p>
+            <div class="flex gap-2">
+              <button class="seg-btn on" data-side="host" style="max-width:180px"><i class="fa-solid fa-house-chimney mr-1"></i>我是房主</button>
+              <button class="seg-btn" data-side="guest" style="max-width:180px"><i class="fa-solid fa-user mr-1"></i>我是加入方</button>
+            </div>
+
+            <div id="man-host" class="space-y-3">
+              <button id="man-host-go" class="btn-primary w-full sm:w-auto"><i class="fa-solid fa-key"></i>生成邀请信令</button>
+              <div id="man-host-offer" class="hidden space-y-2">
+                <p class="text-xs text-slate-400">① 把下面的邀请信令发送给好友：</p>
+                <textarea id="man-offer-text" rows="3" readonly class="tool-input mono text-[10.5px]"></textarea>
+                <button id="man-copy-offer" class="btn-ghost"><i class="fa-regular fa-copy"></i>复制邀请信令</button>
+                <p class="text-xs text-slate-400">② 粘贴好友回传的应答信令：</p>
+                <textarea id="man-answer-in" rows="3" class="tool-input mono text-[10.5px]" placeholder="粘贴应答信令…"></textarea>
+                <button id="man-host-finish" class="btn-primary"><i class="fa-solid fa-link"></i>建立连接</button>
+              </div>
+            </div>
+
+            <div id="man-guest" class="hidden space-y-3">
+              <p class="text-xs text-slate-400">① 粘贴房主发来的邀请信令：</p>
+              <textarea id="man-offer-in" rows="3" class="tool-input mono text-[10.5px]" placeholder="粘贴邀请信令…"></textarea>
+              <button id="man-guest-go" class="btn-primary"><i class="fa-solid fa-key"></i>生成应答信令</button>
+              <div id="man-guest-answer" class="hidden space-y-2">
+                <p class="text-xs text-slate-400">② 把应答信令发回给房主：</p>
+                <textarea id="man-answer-text" rows="3" readonly class="tool-input mono text-[10.5px]"></textarea>
+                <button id="man-copy-answer" class="btn-ghost"><i class="fa-regular fa-copy"></i>复制应答信令</button>
+                <p class="text-[11px] text-slate-500"><i class="fa-solid fa-circle-info mr-1"></i>双方信令交换完成后将自动进入对局，请稍候。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ========== 视图三：对局 ========== -->
+    <div id="view-game" class="hidden space-y-3">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <button id="game-leave" class="btn-ghost">
+          <i class="fa-solid fa-arrow-left-long"></i>退出对局
+        </button>
+        <p id="game-sub" class="text-[11.5px] text-slate-400"></p>
+      </div>
+      <div id="game-mount"></div>
+    </div>
+
+    <footer class="text-center text-xs text-slate-500 pt-2 pb-6 space-y-1" style="padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));">
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a></p>
+      <p>HTML + TailwindCSS + Vanilla JS · WebRTC P2P</p>
+    </footer>
+  </main>
+
+  <!-- 规则弹窗 -->
+  <div id="modal-mask">
+    <div class="modal-box p-5 sm:p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h4 id="modal-title" class="text-base font-semibold text-cyan-200"></h4>
+        <button id="modal-close" class="w-8 h-8 rounded-full bg-white/5 hover:bg-cyan-400/20 text-slate-300 hover:text-cyan-300 transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="modal-body" class="text-[12.5px] text-slate-300 leading-[1.9] space-y-2"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+  /* ==================================================================
+   * 游戏元数据（规则文案集中在此）
+   * ================================================================== */
+  const GAMES = {
+    gomoku: {
+      name: '五子棋', icon: 'fa-solid fa-chess-board', color: 'bg-amber-400/10 text-amber-300',
+      seats: ['执黑 · 先手', '执白 · 后手'],
+      desc: '十五路棋盘，先连成五子者胜',
+      rules: [
+        '对局双方分别使用黑子与白子，黑方先行，轮流在 15×15 棋盘的交叉点落子。',
+        '任意一方率先在横、竖或斜方向形成连续五枚同色棋子即获胜；棋盘下满仍无人获胜则为平局。',
+        'AI 模式可选择简单 / 中等 / 困难三档难度，并可选择执黑（先手）或执白（后手）。',
+        '联机模式中房主执黑先行；支持重新开局，对局通过 WebRTC 点对点传输。'
+      ]
+    },
+    xiangqi: {
+      name: '中国象棋', icon: 'fa-solid fa-chess', color: 'bg-rose-400/10 text-rose-300',
+      seats: ['执红 · 先手', '执黑 · 后手'],
+      desc: '楚河汉界，九宫争雄',
+      rules: [
+        '红方先行，双方各执 16 枚棋子，轮流在交叉点上走棋，将死对方帥 / 將（或对方无棋可走）即获胜。',
+        '車走直线不限格数；馬走「日」字但有棋子蹩马腿时不可走；炮走直线，吃子需隔一个炮架。',
+        '相 / 象走「田」字，不能过河，田心有棋子（塞象眼）时不可走；仕 / 士在九宫内斜走一格；帥 / 將在九宫内直走一格，且双方帥將不能在无遮挡时直接照面。',
+        '兵 / 卒过河前每步只能向前一格，过河后可左右平移，但始终不能后退。',
+        'AI 分为简单 / 中等 / 困难三档；联机模式房主执红先行。'
+      ]
+    },
+    uno: {
+      name: 'UNO 卡牌', icon: 'fa-solid fa-layer-group', color: 'bg-emerald-400/10 text-emerald-300',
+      seats: null,
+      desc: '经典三色行动牌欢乐对决',
+      rules: [
+        '每人发 7 张牌，轮流出牌：所出牌必须与弃牌堆顶的颜色或数字 / 符号相同，万能牌可任意时候打出。',
+        '没有可出的牌时点击牌堆摸一张牌；若摸到的牌可出可选择打出，否则自动跳过回合。',
+        '功能牌：⊘ 禁手（对手跳过）、⇄ 反转（两人局中等于对手跳过）、+2 罚摸两张并跳过；万能牌可指定颜色，+4 万能牌罚摸四张并跳过（仅当手中没有同色牌时允许使用）。',
+        '当手中只剩 2 张牌、打出倒数第二张时，请及时点击「UNO!」，否则会被罚摸 2 张牌。',
+        '最先出完手牌的一方获胜；牌堆抽空时会把弃牌堆重新洗成新牌堆。',
+        '联机模式由房主发牌并裁判，双方均只能看到自己的手牌。'
+      ]
+    }
+  };
+
+  /* ==================================================================
+   * 通用工具
+   * ================================================================== */
+  let toastTimer = null;
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  async function copyText(text, okMsg) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast(okMsg || '已复制到剪贴板');
+    } catch (e) {
+      const input = document.createElement('textarea');
+      input.value = text;
+      input.style.position = 'fixed'; input.style.opacity = '0';
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      input.remove();
+      showToast(okMsg || '已复制到剪贴板');
+    }
+  }
+
+  /* ==================================================================
+   * 视图切换 & 脚本懒加载
+   * ================================================================== */
+  const views = ['hub', 'lobby', 'game'];
+  function showView(name) {
+    views.forEach(v => {
+      document.getElementById('view-' + v).classList.toggle('hidden', v !== name);
+    });
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  const scriptCache = {};
+  function loadScript(src) {
+    if (scriptCache[src]) return scriptCache[src];
+    scriptCache[src] = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = () => { delete scriptCache[src]; reject(new Error('脚本加载失败：' + src)); };
+      document.head.appendChild(s);
+    });
+    return scriptCache[src];
+  }
+
+  /* ==================================================================
+   * 大厅
+   * ================================================================== */
+  let lobbyGame = null;
+  let lobbyCfg = { mode: 'ai', diff: 2, seat: 0, nettab: 'auto', side: 'host' };
+  let netRoom = null;
+  let currentGame = null;
+
+  function renderHub() {
+    const grid = document.getElementById('hub-grid');
+    grid.innerHTML = Object.keys(GAMES).map((id, i) => {
+      const g = GAMES[id];
+      return `
+        <button data-g="${id}"
+                class="entry-card glass-card p-5 flex flex-col items-center text-center gap-2.5"
+                style="animation-delay:${i * 0.07}s">
+          <span class="w-12 h-12 rounded-xl flex items-center justify-center text-xl ${g.color}">
+            <i class="${g.icon}"></i>
+          </span>
+          <span class="text-sm font-medium text-slate-100">${g.name}</span>
+          <span class="text-[11px] text-slate-500 leading-snug">${g.desc}</span>
+          <span class="text-[10.5px] text-cyan-300/70 mt-0.5"><i class="fa-solid fa-robot mr-0.5"></i>AI · <i class="fa-solid fa-user-group mr-0.5"></i>联机</span>
+        </button>`;
+    }).join('');
+    grid.querySelectorAll('button').forEach(b => {
+      b.addEventListener('click', () => openLobby(b.dataset.g));
+    });
+  }
+
+  function openLobby(gameId, presetMode) {
+    lobbyGame = gameId;
+    lobbyCfg = { mode: presetMode || 'ai', diff: 2, seat: 0, nettab: 'auto', side: 'host' };
+    const g = GAMES[gameId];
+    document.getElementById('lobby-title').innerHTML =
+      `<i class="${g.icon} ${g.color.split(' ')[1]}"></i>${g.name}`;
+
+    // 座位段（UNO 无）
+    const seatRow = document.getElementById('seat-row');
+    if (g.seats) {
+      seatRow.classList.remove('hidden');
+      document.getElementById('seat-segs').innerHTML = g.seats.map((s, i) =>
+        `<button class="seg-btn ${i === 0 ? 'on' : ''}" data-seat="${i}">${s}</button>`).join('');
+    } else {
+      seatRow.classList.add('hidden');
+    }
+    syncLobbyUI();
+    resetRoomStatus();
+    showView('lobby');
+  }
+
+  function syncLobbyUI() {
+    document.querySelectorAll('[data-mode]').forEach(b =>
+      b.classList.toggle('on', b.dataset.mode === lobbyCfg.mode));
+    document.getElementById('pane-ai').classList.toggle('hidden', lobbyCfg.mode !== 'ai');
+    document.getElementById('pane-net').classList.toggle('hidden', lobbyCfg.mode !== 'net');
+
+    document.querySelectorAll('[data-diff]').forEach(b =>
+      b.classList.toggle('on', Number(b.dataset.diff) === lobbyCfg.diff));
+    document.querySelectorAll('[data-seat]').forEach(b =>
+      b.classList.toggle('on', Number(b.dataset.seat) === lobbyCfg.seat));
+    document.querySelectorAll('[data-nettab]').forEach(b =>
+      b.classList.toggle('on', b.dataset.nettab === lobbyCfg.nettab));
+    document.getElementById('net-auto').classList.toggle('hidden', lobbyCfg.nettab !== 'auto');
+    document.getElementById('net-manual').classList.toggle('hidden', lobbyCfg.nettab === 'auto');
+    document.querySelectorAll('[data-side]').forEach(b =>
+      b.classList.toggle('on', b.dataset.side === lobbyCfg.side));
+    document.getElementById('man-host').classList.toggle('hidden', lobbyCfg.side !== 'host');
+    document.getElementById('man-guest').classList.toggle('hidden', lobbyCfg.side !== 'guest');
+  }
+
+  /* ==================================================================
+   * 进入对局
+   * ================================================================== */
+  async function startGame(seat) {
+    const isNet = lobbyCfg.mode === 'net';
+    const sub = document.getElementById('game-sub');
+    sub.innerHTML = isNet
+      ? '<i class="fa-solid fa-user-group mr-1"></i>联机对战 · 房间号 ' + (netRoom && netRoom.code ? netRoom.code : '手动直连')
+      : '<i class="fa-solid fa-robot mr-1"></i>AI ' + ['', '简单', '中等', '困难'][lobbyCfg.diff];
+    showView('game');
+    const mount = document.getElementById('game-mount');
+    mount.innerHTML = '<p class="text-center text-xs text-slate-500 py-10"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在加载游戏资源…</p>';
+    try {
+      await loadScript('games/' + lobbyGame + '.js');
+      mount.innerHTML = '';
+      const opts = isNet
+        ? { mode: 'net', seat: seat, room: netRoom, toast: showToast }
+        : { mode: 'ai', diff: lobbyCfg.diff, seat: lobbyCfg.seat, toast: showToast };
+      window.GG[lobbyGame].start(mount, opts);
+      currentGame = lobbyGame;
+    } catch (e) {
+      mount.innerHTML = '<p class="text-center text-xs text-rose-300 py-10">游戏加载失败，请检查网络后重试<br>' + e.message + '</p>';
+    }
+  }
+
+  async function leaveGame() {
+    if (currentGame && window.GG[currentGame] && window.GG[currentGame].stop) {
+      window.GG[currentGame].stop();
+    }
+    currentGame = null;
+    if (netRoom) {
+      netRoom.destroy();
+      netRoom = null;
+    }
+    showView('hub');
+  }
+
+  /* ==================================================================
+   * 联机：房间号匹配（PeerJS / WebRTC DataChannel）
+   * ================================================================== */
+  function resetRoomStatus() {
+    const box = document.getElementById('room-status');
+    box.classList.add('hidden');
+    box.innerHTML = '';
+    if (netRoom) { netRoom.destroy(); netRoom = null; }
+  }
+
+  function setRoomStatus(html) {
+    const box = document.getElementById('room-status');
+    box.classList.remove('hidden');
+    box.innerHTML = html;
+  }
+
+  async function ensureNet() {
+    await loadScript('games/net.js');
+    await window.NetRoom.ensureLib();
+  }
+
+  async function netCreate() {
+    if (!lobbyGame) return;
+    try {
+      setRoomStatus('<p class="text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在创建房间…</p>');
+      await ensureNet();
+      resetRoomStatus();
+      netRoom = new window.NetRoom(lobbyGame);
+      wireRoomClose();
+      const code = await netRoom.host();
+      setRoomStatus(`
+        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>房间已创建，等待好友加入</p>
+        <p class="text-3xl font-mono font-bold tracking-[0.35em] text-cyan-200 my-2">${code}</p>
+        <p class="text-[11px] text-slate-500">请把这 6 位房间号告诉好友</p>`);
+      netRoom.once('connected', () => {
+        netRoom.send({ t: 'start' });
+        startGame(0);
+      });
+    } catch (e) {
+      resetRoomStatus();
+      showToast(e.message || '创建房间失败，请稍后再试');
+    }
+  }
+
+  async function netJoin() {
+    const code = document.getElementById('join-code').value.trim();
+    if (!/^\d{6}$/.test(code)) { showToast('请输入 6 位房间号'); return; }
+    try {
+      setRoomStatus('<p class="text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin mr-1"></i>正在加入房间 ' + code + ' …</p>');
+      await ensureNet();
+      netRoom = new window.NetRoom(lobbyGame);
+      wireRoomClose();
+      await netRoom.join(code);
+      setRoomStatus('<p class="text-xs text-slate-400"><i class="fa-solid fa-circle-check text-green-400 mr-1"></i>已连接，等待房主开始…</p>');
+      netRoom.once('data', msg => {
+        if (msg && msg.t === 'start') startGame(1);
+      });
+    } catch (e) {
+      resetRoomStatus();
+      showToast(e.message || '加入房间失败，请确认房间号是否正确');
+    }
+  }
+
+  function wireRoomClose() {
+    netRoom.on('close', () => {
+      if (currentGame) {
+        showToast('对方已离开对局');
+        if (window.GG[currentGame] && window.GG[currentGame].stop) window.GG[currentGame].stop();
+        currentGame = null;
+        netRoom = null;
+        showView('hub');
+      }
+    });
+  }
+
+  /* ==================================================================
+   * 联机：手动信令（纯 WebRTC，零第三方服务）
+   * ================================================================== */
+  let manRoom = null;
+
+  async function manHostGo() {
+    try {
+      await loadScript('games/net.js');
+      manRoom = new window.ManualRoom(lobbyGame);
+      const offer = await manRoom.host();
+      document.getElementById('man-host-offer').classList.remove('hidden');
+      document.getElementById('man-offer-text').value = offer;
+      wireManualClose();
+    } catch (e) { showToast(e.message || '生成邀请信令失败'); }
+  }
+
+  async function manHostFinish() {
+    const answer = document.getElementById('man-answer-in').value.trim();
+    if (!answer) { showToast('请先粘贴应答信令'); return; }
+    try {
+      await manRoom.acceptAnswer(answer);
+      adoptManualRoom(0);
+    } catch (e) { showToast('应答信令无效：' + e.message); }
+  }
+
+  async function manGuestGo() {
+    const offer = document.getElementById('man-offer-in').value.trim();
+    if (!offer) { showToast('请先粘贴邀请信令'); return; }
+    try {
+      await loadScript('games/net.js');
+      manRoom = new window.ManualRoom(lobbyGame);
+      const answer = await manRoom.join(offer);
+      document.getElementById('man-guest-answer').classList.remove('hidden');
+      document.getElementById('man-answer-text').value = answer;
+      wireManualClose();
+      manRoom.onceConnected(() => adoptManualRoom(1));
+    } catch (e) { showToast('邀请信令无效：' + e.message); }
+  }
+
+  function wireManualClose() {
+    manRoom.on('close', () => showToast('连接已断开'));
+  }
+
+  function adoptManualRoom(seat) {
+    netRoom = manRoom;
+    manRoom = null;
+    startGame(seat);
+  }
+
+  /* ==================================================================
+   * 规则弹窗
+   * ================================================================== */
+  function showRules(gameId) {
+    const g = GAMES[gameId];
+    document.getElementById('modal-title').textContent = g.name + ' · 游戏规则';
+    document.getElementById('modal-body').innerHTML =
+      g.rules.map(r => '<p>' + r + '</p>').join('');
+    document.getElementById('modal-mask').classList.add('show');
+  }
+  function hideRules() {
+    document.getElementById('modal-mask').classList.remove('show');
+  }
+
+  /* ==================================================================
+   * 壁纸（轻量：页面空闲后再请求，不阻塞交互）
+   * ================================================================== */
+  function loadBackground() {
+    const url = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=' +
+      encodeURIComponent('动漫风格风景壁纸，星空下宁静湖面，远山极光，深蓝青色调，唯美治愈') +
+      '&image_size=landscape_16_9';
+    const img = document.getElementById('bg-img');
+    const probe = new Image();
+    probe.onload = () => { img.src = probe.src; };
+    probe.onerror = () => {};
+    probe.src = url;
+  }
+
+  /* ==================================================================
+   * 事件绑定 & 初始化
+   * ================================================================== */
+  function bindEvents() {
+    document.getElementById('lobby-back').addEventListener('click', () => {
+      resetRoomStatus();
+      if (manRoom) { manRoom.destroy(); manRoom = null; }
+      showView('hub');
+    });
+    document.getElementById('game-leave').addEventListener('click', () => {
+      const go = () => leaveGame();
+      if (currentGame && lobbyCfg.mode === 'net') {
+        if (confirm('确定退出对局吗？中途退出将被判定为离开。')) go();
+      } else { go(); }
+    });
+
+    document.querySelectorAll('[data-mode]').forEach(b => {
+      b.addEventListener('click', () => {
+        lobbyCfg.mode = b.dataset.mode;
+        resetRoomStatus();
+        syncLobbyUI();
+      });
+    });
+    document.querySelectorAll('[data-diff]').forEach(b => {
+      b.addEventListener('click', () => { lobbyCfg.diff = Number(b.dataset.diff); syncLobbyUI(); });
+    });
+    // 座位按钮为大厅动态生成，用事件委托保证点击生效
+    document.addEventListener('click', e => {
+      const sb = e.target.closest('[data-seat]');
+      if (sb) { lobbyCfg.seat = Number(sb.dataset.seat); syncLobbyUI(); }
+    });
+    document.querySelectorAll('[data-nettab]').forEach(b => {
+      b.addEventListener('click', () => {
+        lobbyCfg.nettab = b.dataset.nettab;
+        resetRoomStatus();
+        syncLobbyUI();
+      });
+    });
+    document.querySelectorAll('[data-side]').forEach(b => {
+      b.addEventListener('click', () => { lobbyCfg.side = b.dataset.side; syncLobbyUI(); });
+    });
+
+    document.getElementById('btn-start-ai').addEventListener('click', () => startGame(lobbyCfg.seat));
+    document.getElementById('btn-create').addEventListener('click', netCreate);
+    document.getElementById('btn-join').addEventListener('click', netJoin);
+    document.getElementById('join-code').addEventListener('input', e => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    });
+
+    document.getElementById('man-host-go').addEventListener('click', manHostGo);
+    document.getElementById('man-host-finish').addEventListener('click', manHostFinish);
+    document.getElementById('man-guest-go').addEventListener('click', manGuestGo);
+    document.getElementById('man-copy-offer').addEventListener('click', () =>
+      copyText(document.getElementById('man-offer-text').value, '邀请信令已复制'));
+    document.getElementById('man-copy-answer').addEventListener('click', () =>
+      copyText(document.getElementById('man-answer-text').value, '应答信令已复制'));
+
+    document.getElementById('btn-rules').addEventListener('click', () => showRules(lobbyGame));
+    document.getElementById('modal-close').addEventListener('click', hideRules);
+    document.getElementById('modal-mask').addEventListener('click', e => {
+      if (e.target.id === 'modal-mask') hideRules();
+    });
+  }
+
+  function init() {
+    renderHub();
+    bindEvents();
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+    // 壁纸在首屏渲染完成后再加载
+    setTimeout(loadBackground, 300);
+
+    // 支持从工具库带参直达：?g=gomoku
+    const g = new URLSearchParams(location.search).get('g');
+    if (g && GAMES[g]) openLobby(g);
+  }
+
+  window.GG = window.GG || {};
+  init();
+  </script>
+</body>
+</html>

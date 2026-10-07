@@ -204,6 +204,42 @@
       <div id="tool-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         <!-- 工具入口卡片由 JS 动态生成 -->
       </div>
+
+      <!-- ============================================================ -->
+      <!-- 子栏目：棋类 & 桌游（独立页面按需加载，不增加本页体积与请求）     -->
+      <!-- ============================================================ -->
+      <section class="mt-8">
+        <h2 class="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2 px-1">
+          <span class="w-1 h-4 rounded-full bg-gradient-to-b from-amber-300 to-rose-500"></span>
+          棋类 & 桌游
+        </h2>
+        <div class="grid grid-cols-3 gap-3 sm:gap-4">
+          <a href="./games.html?g=gomoku"
+             class="entry-card glass-card p-3 sm:p-5 flex flex-col items-center text-center gap-1.5 sm:gap-2.5">
+            <span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg bg-amber-400/10 text-amber-300">
+              <i class="fa-solid fa-chess-board"></i>
+            </span>
+            <span class="text-xs sm:text-sm text-slate-200">五子棋</span>
+            <span class="hidden sm:block text-[11px] text-slate-500">AI / 联机对战</span>
+          </a>
+          <a href="./games.html?g=xiangqi"
+             class="entry-card glass-card p-3 sm:p-5 flex flex-col items-center text-center gap-1.5 sm:gap-2.5">
+            <span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg bg-rose-400/10 text-rose-300">
+              <i class="fa-solid fa-chess"></i>
+            </span>
+            <span class="text-xs sm:text-sm text-slate-200">中国象棋</span>
+            <span class="hidden sm:block text-[11px] text-slate-500">AI / 联机对战</span>
+          </a>
+          <a href="./games.html?g=uno"
+             class="entry-card glass-card p-3 sm:p-5 flex flex-col items-center text-center gap-1.5 sm:gap-2.5">
+            <span class="w-11 h-11 rounded-xl flex items-center justify-center text-lg bg-emerald-400/10 text-emerald-300">
+              <i class="fa-solid fa-layer-group"></i>
+            </span>
+            <span class="text-xs sm:text-sm text-slate-200">UNO 卡牌</span>
+            <span class="hidden sm:block text-[11px] text-slate-500">AI / 联机对战</span>
+          </a>
+        </div>
+      </section>
     </div>
 
     <!-- ============================================================ -->
