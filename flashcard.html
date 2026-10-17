@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="奈良的记忆闪卡 - 牌组管理、3D翻转背诵、复习积分奖励" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>记忆闪卡 · 奈良</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E5%8D%A1%3C/text%3E%3C/svg%3E" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    tailwind.config = { theme: { extend: { colors: { accent: '#67e8f9' } } } };
+  </script>
+
+  <style>
+    html, body { height: 100%; overflow-x: hidden; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.42);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(148, 197, 255, 0.14);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+      transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+    }
+    .panel-card, .panel-card:hover { transform: none; }
+    .btn-primary {
+      display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+      font-size: 13px; font-weight: 500; color: #ecfeff;
+      padding: .5rem 1.15rem; border-radius: 999px;
+      background: linear-gradient(to right, rgba(8,145,178,.85), rgba(14,165,233,.85));
+      border: 1px solid rgba(103, 232, 249, 0.4);
+      box-shadow: 0 6px 20px rgba(8, 145, 178, 0.25);
+      transition: all .25s ease; cursor: pointer;
+    }
+    .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 6px 24px rgba(103,232,249,.35); }
+    .btn-primary:active { transform: scale(.97); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+    .btn-ghost {
+      display: inline-flex; align-items: center; justify-content: center; gap: .35rem;
+      font-size: 12.5px; color: #cbd5e1;
+      padding: .45rem .9rem; border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      transition: all .25s ease; cursor: pointer;
+    }
+    .btn-ghost:hover { color: #67e8f9; border-color: rgba(103, 232, 249, 0.4); background: rgba(103, 232, 249, 0.08); }
+    .btn-danger { color: #fda4af; border-color: rgba(244,63,94,.35); background: rgba(244,63,94,.06); }
+    .btn-danger:hover { color: #fff; border-color: rgba(244,63,94,.6); background: rgba(244,63,94,.15); }
+    .tool-input {
+      width: 100%; background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(148, 197, 255, 0.14); color: #e2e8f0;
+      border-radius: .8rem; padding: .65rem .9rem; font-size: 14px;
+      transition: border-color .3s ease, box-shadow .3s ease;
+    }
+    .tool-input::placeholder { color: #64748b; }
+    .tool-input:focus { outline: none; border-color: rgba(103, 232, 249, 0.45); box-shadow: 0 0 0 3px rgba(103, 232, 249, 0.12); }
+    textarea.tool-input { resize: vertical; min-height: 80px; line-height: 1.6; font-family: inherit; }
+    .chip { display: inline-flex; align-items: center; gap: .3rem; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; border: 1px solid rgba(255,255,255,.14); color: #cbd5e1; }
+    .chip.mastered { background: rgba(52,211,153,.14); border-color: rgba(52,211,153,.45); color: #6ee7b7; }
+    .chip.review { background: rgba(251,191,36,.14); border-color: rgba(251,191,36,.45); color: #fcd34d; }
+    .chip.new { background: rgba(148,163,184,.14); border-color: rgba(148,163,184,.4); color: #cbd5e1; }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    main > * { animation: fadeUp .6s ease backwards; }
+    #toast {
+      position: fixed; left: 50%; bottom: calc(32px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(20px); opacity: 0; pointer-events: none;
+      background: rgba(8, 145, 178, 0.92); color: #ecfeff; font-size: 14px;
+      padding: 10px 20px; border-radius: 999px; box-shadow: 0 8px 24px rgba(8, 145, 178, .35);
+      transition: opacity .3s ease, transform .3s ease; z-index: 99; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    #toast.err { background: rgba(190, 18, 60, .92); box-shadow: 0 8px 24px rgba(190, 18, 60, .35); }
+    #toast.ok { background: rgba(2, 132, 90, .92); box-shadow: 0 8px 24px rgba(2, 132, 90, .35); }
+    #modal-mask {
+      position: fixed; inset: 0; z-index: 80; background: rgba(2, 6, 23, .66); backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    #modal-mask.show { display: flex; }
+    .modal-box {
+      width: 100%; max-width: 460px; max-height: 84vh; overflow-y: auto;
+      background: rgba(15, 23, 42, .96); border: 1px solid rgba(103,232,249,.25);
+      border-radius: 1.1rem; box-shadow: 0 20px 60px rgba(2,8,23,.6);
+    }
+    .modal-box::-webkit-scrollbar { width: 6px; }
+    .modal-box::-webkit-scrollbar-thumb { background: rgba(103,232,249,.3); border-radius: 3px; }
+
+    /* ============ 3D 翻转卡片 ============ */
+    .card-scene {
+      perspective: 1400px;
+      width: 100%;
+      height: clamp(260px, 50vh, 440px);
+      cursor: pointer;
+    }
+    .card-inner {
+      position: relative; width: 100%; height: 100%;
+      transition: transform .65s cubic-bezier(.4,.2,.2,1);
+      transform-style: preserve-3d;
+    }
+    .card-inner.flipped { transform: rotateY(180deg); }
+    .card-face {
+      position: absolute; inset: 0; border-radius: 1.25rem;
+      backface-visibility: hidden; -webkit-backface-visibility: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 1.5rem; text-align: center; overflow: hidden;
+      border: 1px solid rgba(103,232,249,.22);
+      box-shadow: 0 16px 48px rgba(2,8,23,.45);
+    }
+    .card-front {
+      background: linear-gradient(135deg, rgba(8,145,178,.18), rgba(14,116,144,.12));
+    }
+    .card-back {
+      background: linear-gradient(135deg, rgba(139,92,246,.2), rgba(124,58,237,.14));
+      transform: rotateY(180deg);
+    }
+    .card-face .face-label { position: absolute; top: .9rem; left: 1rem; font-size: 10.5px; color: rgba(203,213,225,.6); letter-spacing: .1em; text-transform: uppercase; }
+    .card-face .face-hint { position: absolute; bottom: .9rem; font-size: 11px; color: rgba(203,213,225,.45); }
+    .card-face .face-text { font-size: clamp(16px, 2.4vw, 22px); color: #f1f5f9; line-height: 1.65; font-weight: 500; word-break: break-word; max-height: 80%; overflow-y: auto; }
+
+    @media (max-width: 640px) {
+      .btn-primary, .btn-ghost { min-height: 44px; padding: .72rem 1.1rem; font-size: 13.5px; }
+      .card-scene { height: clamp(280px, 52vh, 420px); }
+    }
+    #page-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-200">
+
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-slate-950">
+    <div class="absolute inset-0" style="background: linear-gradient(180deg, rgba(2,6,23,.72) 0%, rgba(2,6,23,.52) 45%, rgba(2,6,23,.85) 100%);"></div>
+  </div>
+
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/55 border-b border-white/10">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center gap-3">
+      <button id="btn-back" class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i><span>返回</span>
+      </button>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-layer-group text-cyan-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">记忆闪卡</h1>
+      </div>
+      <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-amber-300/25 bg-amber-400/10 min-w-[86px] justify-end">
+        <i class="fa-solid fa-coins text-amber-300 text-xs"></i>
+        <span id="points-now" class="text-amber-200 text-xs font-semibold">0</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- 视图：牌组列表 -->
+    <section id="view-decks">
+      <div class="flex items-center justify-between gap-2 mb-3 px-1 flex-wrap">
+        <h2 class="text-sm font-medium text-slate-300 flex items-center gap-2">
+          <span class="w-1 h-4 rounded-full bg-gradient-to-b from-cyan-300 to-sky-500"></span>
+          我的牌组
+        </h2>
+        <button id="btn-new-deck" class="btn-primary"><i class="fa-solid fa-plus"></i><span class="hidden sm:inline">新建牌组</span><span class="sm:hidden">新建</span></button>
+      </div>
+      <div id="deck-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </section>
+
+    <!-- 视图：牌组详情（编辑） -->
+    <section id="view-detail" class="hidden">
+      <div class="flex items-center justify-between gap-2 mb-3 px-1 flex-wrap">
+        <h2 class="text-sm font-medium text-slate-300 flex items-center gap-2">
+          <span class="w-1 h-4 rounded-full bg-gradient-to-b from-amber-300 to-rose-500"></span>
+          <span id="detail-title">牌组</span>
+        </h2>
+        <div class="flex gap-2">
+          <button id="btn-back-decks" class="btn-ghost"><i class="fa-solid fa-arrow-left"></i>牌组列表</button>
+          <button id="btn-study" class="btn-primary"><i class="fa-solid fa-book-open-reader"></i>开始复习</button>
+        </div>
+      </div>
+
+      <!-- 统计 -->
+      <div class="glass-card panel-card p-4">
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div><p class="text-2xl font-bold text-cyan-300" id="stat-total">0</p><p class="text-[11px] text-slate-400 mt-1">总卡片</p></div>
+          <div><p class="text-2xl font-bold text-emerald-300" id="stat-mastered">0</p><p class="text-[11px] text-slate-400 mt-1">已掌握</p></div>
+          <div><p class="text-2xl font-bold text-amber-300" id="stat-review">0</p><p class="text-[11px] text-slate-400 mt-1">待复习</p></div>
+        </div>
+      </div>
+
+      <!-- 新增单张卡片 -->
+      <div class="glass-card panel-card p-4">
+        <h3 class="text-[12px] text-slate-400 mb-2"><i class="fa-solid fa-plus-circle text-cyan-300/70 mr-1"></i>新增卡片</h3>
+        <input id="new-front" class="tool-input mb-2" placeholder="正面（问题）" />
+        <input id="new-back" class="tool-input mb-2" placeholder="背面（答案）" />
+        <button id="btn-add-card" class="btn-primary w-full"><i class="fa-solid fa-plus"></i>添加卡片</button>
+      </div>
+
+      <!-- 批量导入 -->
+      <div class="glass-card panel-card p-4">
+        <h3 class="text-[12px] text-slate-400 mb-2"><i class="fa-solid fa-file-import text-cyan-300/70 mr-1"></i>批量粘贴导入（每行：正面|背面）</h3>
+        <textarea id="import-area" class="tool-input" rows="5" placeholder="apple|苹果&#10;banana|香蕉&#10;anatomy|解剖学"></textarea>
+        <button id="btn-import" class="btn-ghost mt-2"><i class="fa-solid fa-file-import"></i>导入</button>
+      </div>
+
+      <!-- 卡片列表 -->
+      <div class="glass-card panel-card p-4">
+        <h3 class="text-[12px] text-slate-400 mb-2"><i class="fa-solid fa-list-ul text-cyan-300/70 mr-1"></i>卡片列表</h3>
+        <div id="cards-list" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- 视图：复习模式 -->
+    <section id="view-study" class="hidden">
+      <div class="flex items-center justify-between gap-2 mb-3 px-1">
+        <button id="btn-exit-study" class="btn-ghost"><i class="fa-solid fa-arrow-left"></i>退出复习</button>
+        <span class="chip"><i class="fa-solid fa-layer-group"></i><span id="study-progress">0 / 0</span></span>
+      </div>
+
+      <!-- 翻转卡片 -->
+      <div class="card-scene" id="card-scene">
+        <div class="card-inner" id="card-inner">
+          <div class="card-face card-front">
+            <span class="face-label">正面 · 问题</span>
+            <p class="face-text" id="study-front">点击卡片翻转</p>
+            <span class="face-hint"><i class="fa-solid fa-hand-pointer"></i> 点击翻面查看答案</span>
+          </div>
+          <div class="card-face card-back">
+            <span class="face-label">背面 · 答案</span>
+            <p class="face-text" id="study-back">答案</p>
+            <span class="face-hint"><i class="fa-solid fa-hand-pointer"></i> 点击翻回正面</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 操作区 -->
+      <div class="flex gap-2 mt-4">
+        <button id="btn-mark-mastered" class="btn-ghost flex-1" style="color:#6ee7b7;border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.08)"><i class="fa-solid fa-check-double"></i>已掌握</button>
+        <button id="btn-mark-review" class="btn-ghost flex-1" style="color:#fcd34d;border-color:rgba(251,191,36,.45);background:rgba(251,191,36,.08)"><i class="fa-solid fa-rotate"></i>待复习</button>
+      </div>
+      <div class="flex gap-2 mt-2">
+        <button id="btn-prev" class="btn-ghost flex-1"><i class="fa-solid fa-chevron-left"></i>上一张</button>
+        <button id="btn-next" class="btn-primary flex-1">下一张<i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+      <p class="text-center text-[11px] text-slate-500 mt-3">完成整轮复习可获得 10 积分（每日每牌组一次）</p>
+    </section>
+
+  </main>
+
+  <div id="modal-mask">
+    <div class="modal-box p-5">
+      <div id="modal-content"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ==================== IndexedDB ==================== */
+    var DB_NAME = 'nara_flashcard_v1';
+    var DB_VER = 1;
+    var db = null;
+
+    function openDB() {
+      return new Promise(function (resolve, reject) {
+        var req = indexedDB.open(DB_NAME, DB_VER);
+        req.onupgradeneeded = function (e) {
+          var d = e.target.result;
+          if (!d.objectStoreNames.contains('decks')) {
+            var s1 = d.createObjectStore('decks', { keyPath: 'id', autoIncrement: true });
+            s1.createIndex('subject', 'subject', { unique: false });
+          }
+          if (!d.objectStoreNames.contains('cards')) {
+            var s2 = d.createObjectStore('cards', { keyPath: 'id', autoIncrement: true });
+            s2.createIndex('deckId', 'deckId', { unique: false });
+          }
+          if (!d.objectStoreNames.contains('rewards')) {
+            var s3 = d.createObjectStore('rewards', { keyPath: 'id', autoIncrement: true });
+            s3.createIndex('deckDate', 'deckDate', { unique: true });
+          }
+        };
+        req.onsuccess = function () { resolve(req.result); };
+        req.onerror = function () { reject(req.error); };
+      });
+    }
+    function tx(store, mode) {
+      return db.transaction(store, mode).objectStore(store);
+    }
+    function getAll(store) {
+      return new Promise(function (resolve, reject) {
+        var r = tx(store, 'readonly').getAll();
+        r.onsuccess = function () { resolve(r.result); };
+        r.onerror = function () { reject(r.error); };
+      });
+    }
+    function getByIndex(store, idx, key) {
+      return new Promise(function (resolve, reject) {
+        var r = tx(store, 'readonly').index(idx).getAll(key);
+        r.onsuccess = function () { resolve(r.result); };
+        r.onerror = function () { reject(r.error); };
+      });
+    }
+    function addRec(store, rec) {
+      return new Promise(function (resolve, reject) {
+        var r = tx(store, 'readwrite').add(rec);
+        r.onsuccess = function () { resolve(r.result); };
+        r.onerror = function () { reject(r.error); };
+      });
+    }
+    function putRec(store, rec) {
+      return new Promise(function (resolve, reject) {
+        var r = tx(store, 'readwrite').put(rec);
+        r.onsuccess = function () { resolve(r.result); };
+        r.onerror = function () { reject(r.error); };
+      });
+    }
+    function delRec(store, id) {
+      return new Promise(function (resolve, reject) {
+        var r = tx(store, 'readwrite').delete(id);
+        r.onsuccess = function () { resolve(); };
+        r.onerror = function () { reject(r.error); };
+      });
+    }
+
+    /* ==================== 积分（与签到系统互通） ==================== */
+    var CHECKIN_KEY = 'nara_checkin_v1';
+    function loadCheckin() {
+      try { return JSON.parse(localStorage.getItem(CHECKIN_KEY)) || {}; }
+      catch (e) { return {}; }
+    }
+    function saveCheckin(s) {
+      try { localStorage.setItem(CHECKIN_KEY, JSON.stringify(s)); } catch (e) {}
+    }
+    function getPoints() {
+      var s = loadCheckin();
+      return Math.max(0, s.points || 0);
+    }
+    function addPoints(delta) {
+      var s = loadCheckin();
+      if (!s || typeof s !== 'object') s = { points: 0, unlocks: {}, days: {}, milestones: {} };
+      if (typeof s.points !== 'number') s.points = 0;
+      s.points = Math.max(0, s.points + delta);
+      saveCheckin(s);
+      if (window.NaraCheckin && typeof window.NaraCheckin.refresh === 'function') {
+        try { window.NaraCheckin.refresh(); } catch (e) {}
+      }
+      return s.points;
+    }
+    function refreshPoints() { $('points-now').textContent = getPoints().toLocaleString(); }
+
+    /* ==================== 工具 ==================== */
+    function $(id) { return document.getElementById(id); }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function toast(msg, type) {
+      var t = $('toast');
+      t.textContent = msg;
+      t.className = '';
+      if (type === 'err') t.classList.add('err');
+      else if (type === 'ok') t.classList.add('ok');
+      t.classList.add('show');
+      clearTimeout(t._tid);
+      t._tid = setTimeout(function () { t.classList.remove('show'); }, 2400);
+    }
+    var SUBJECTS = ['英语', '解剖学', '生理学', '药物学', '数学', '语文', '其他'];
+
+    /* ==================== 状态 ==================== */
+    var state = { view: 'decks', decks: [], currentDeckId: null, cards: [], study: { idx: 0, list: [], finished: false } };
+
+    /* ==================== 牌组列表 ==================== */
+    async function loadDecks() {
+      state.decks = await getAll('decks');
+      renderDecks();
+    }
+    async function deckStat(deckId) {
+      var cards = await getByIndex('cards', 'deckId', deckId);
+      var mastered = 0, review = 0;
+      cards.forEach(function (c) {
+        if (c.status === 'mastered') mastered++;
+        else review++;
+      });
+      return { total: cards.length, mastered: mastered, review: review };
+    }
+    async function renderDecks() {
+      var grid = $('deck-grid');
+      grid.innerHTML = '';
+      if (!state.decks.length) {
+        grid.innerHTML = '<div class="col-span-full text-center py-10 text-slate-500"><i class="fa-solid fa-layer-group text-3xl mb-2 block opacity-50"></i>暂无牌组，点击右上角新建</div>';
+        return;
+      }
+      for (var i = 0; i < state.decks.length; i++) {
+        var d = state.decks[i];
+        var stat = await deckStat(d.id);
+        var card = document.createElement('div');
+        card.className = 'glass-card panel-card p-4 cursor-pointer hover:border-cyan-300/40';
+        card.innerHTML =
+          '<div class="flex items-start justify-between gap-2">' +
+            '<div class="min-w-0 flex-1">' +
+              '<h3 class="text-sm font-semibold text-slate-100 truncate">' + esc(d.name) + '</h3>' +
+              '<p class="text-[11px] text-slate-500 mt-0.5"><i class="fa-solid fa-bookmark mr-1"></i>' + esc(d.subject) + '</p>' +
+            '</div>' +
+            '<div class="flex gap-1" onclick="event.stopPropagation()">' +
+              '<button class="btn-ghost" style="padding:.3rem .5rem;font-size:11px" data-act="rename" data-id="' + d.id + '"><i class="fa-solid fa-pen"></i></button>' +
+              '<button class="btn-ghost btn-danger" style="padding:.3rem .5rem;font-size:11px" data-act="del" data-id="' + d.id + '"><i class="fa-solid fa-trash"></i></button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="grid grid-cols-3 gap-1 mt-3 text-center">' +
+            '<div><p class="text-lg font-bold text-cyan-300">' + stat.total + '</p><p class="text-[10px] text-slate-500">卡片</p></div>' +
+            '<div><p class="text-lg font-bold text-emerald-300">' + stat.mastered + '</p><p class="text-[10px] text-slate-500">掌握</p></div>' +
+            '<div><p class="text-lg font-bold text-amber-300">' + stat.review + '</p><p class="text-[10px] text-slate-500">待复习</p></div>' +
+          '</div>';
+        card.addEventListener('click', function () { openDetail(d.id); });
+        grid.appendChild(card);
+      }
+      grid.querySelectorAll('[data-act]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var id = Number(b.dataset.id);
+          if (b.dataset.act === 'rename') renameDeck(id);
+          else if (b.dataset.act === 'del') deleteDeck(id);
+        });
+      });
+    }
+
+    /* ==================== 新建/重命名/删除牌组 ==================== */
+    function openDeckModal(deck) {
+      var content = $('modal-content');
+      var isEdit = !!deck;
+      content.innerHTML =
+        '<h3 class="text-sm font-semibold text-slate-100 mb-3">' + (isEdit ? '重命名牌组' : '新建牌组') + '</h3>' +
+        '<label class="text-[11px] text-slate-400 block mb-1">牌组名称</label>' +
+        '<input id="m-name" class="tool-input mb-3" value="' + (isEdit ? esc(deck.name) : '') + '" placeholder="如：英语单词" />' +
+        '<label class="text-[11px] text-slate-400 block mb-1">科目分类</label>' +
+        '<select id="m-subject" class="tool-input mb-4">' + SUBJECTS.map(function (s) { return '<option' + (isEdit && deck.subject === s ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select>' +
+        '<div class="flex justify-center gap-2"><button id="m-cancel" class="btn-ghost">取消</button><button id="m-ok" class="btn-primary"><i class="fa-solid fa-check"></i>确定</button></div>';
+      $('modal-mask').classList.add('show');
+      $('m-cancel').onclick = closeModal;
+      $('m-ok').onclick = async function () {
+        var name = $('m-name').value.trim();
+        var subject = $('m-subject').value;
+        if (!name) { toast('请输入牌组名称', 'err'); return; }
+        if (isEdit) {
+          deck.name = name; deck.subject = subject;
+          await putRec('decks', deck);
+          toast('重命名成功', 'ok');
+        } else {
+          await addRec('decks', { name: name, subject: subject, createdAt: Date.now() });
+          toast('牌组已创建', 'ok');
+        }
+        closeModal();
+        loadDecks();
+      };
+    }
+    function closeModal() { $('modal-mask').classList.remove('show'); }
+
+    async function renameDeck(id) {
+      var deck = state.decks.find(function (d) { return d.id === id; });
+      if (deck) openDeckModal(deck);
+    }
+    async function deleteDeck(id) {
+      if (!confirm('确定删除该牌组及其所有卡片？此操作不可撤销。')) return;
+      var cards = await getByIndex('cards', 'deckId', id);
+      for (var i = 0; i < cards.length; i++) await delRec('cards', cards[i].id);
+      await delRec('decks', id);
+      toast('牌组已删除', 'ok');
+      loadDecks();
+    }
+
+    /* ==================== 牌组详情 ==================== */
+    async function openDetail(deckId) {
+      state.currentDeckId = deckId;
+      var deck = state.decks.find(function (d) { return d.id === deckId; });
+      $('detail-title').textContent = (deck ? deck.name : '牌组') + ' · ' + (deck ? deck.subject : '');
+      showView('detail');
+      await loadCards();
+    }
+    async function loadCards() {
+      state.cards = await getByIndex('cards', 'deckId', state.currentDeckId);
+      renderCards();
+      renderStats();
+    }
+    function renderStats() {
+      var total = state.cards.length;
+      var mastered = state.cards.filter(function (c) { return c.status === 'mastered'; }).length;
+      $('stat-total').textContent = total;
+      $('stat-mastered').textContent = mastered;
+      $('stat-review').textContent = total - mastered;
+    }
+    function renderCards() {
+      var list = $('cards-list');
+      list.innerHTML = '';
+      if (!state.cards.length) {
+        list.innerHTML = '<p class="text-center text-slate-500 py-6 text-[12px]">暂无卡片，请添加或批量导入</p>';
+        return;
+      }
+      state.cards.forEach(function (c) {
+        var div = document.createElement('div');
+        div.className = 'flex items-start gap-2 p-2.5 rounded-lg bg-white/[0.03] border border-white/8';
+        var statusChip = c.status === 'mastered'
+          ? '<span class="chip mastered"><i class="fa-solid fa-check"></i>已掌握</span>'
+          : (c.status === 'review' ? '<span class="chip review"><i class="fa-solid fa-rotate"></i>待复习</span>' : '<span class="chip new"><i class="fa-solid fa-circle"></i>未学习</span>');
+        div.innerHTML =
+          '<div class="flex-1 min-w-0">' +
+            '<p class="text-[12.5px] text-slate-100 leading-snug"><b>正面：</b>' + esc(c.front) + '</p>' +
+            '<p class="text-[12px] text-slate-400 leading-snug mt-0.5"><b>背面：</b>' + esc(c.back) + '</p>' +
+            '<div class="mt-1.5 flex items-center gap-1.5">' + statusChip + '</div>' +
+          '</div>' +
+          '<div class="flex flex-col gap-1">' +
+            '<button class="btn-ghost" style="padding:.25rem .4rem;font-size:10.5px" data-act="toggle" data-id="' + c.id + '"><i class="fa-solid fa-shuffle"></i>切换</button>' +
+            '<button class="btn-ghost btn-danger" style="padding:.25rem .4rem;font-size:10.5px" data-act="del" data-id="' + c.id + '"><i class="fa-solid fa-trash"></i>删</button>' +
+          '</div>';
+        list.appendChild(div);
+      });
+      list.querySelectorAll('[data-act]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var id = Number(b.dataset.id);
+          if (b.dataset.act === 'toggle') toggleStatus(id);
+          else if (b.dataset.act === 'del') deleteCard(id);
+        });
+      });
+    }
+    async function toggleStatus(id) {
+      var c = state.cards.find(function (x) { return x.id === id; });
+      if (!c) return;
+      c.status = c.status === 'mastered' ? 'new' : 'mastered';
+      c.updatedAt = Date.now();
+      await putRec('cards', c);
+      renderCards();
+      renderStats();
+    }
+    async function deleteCard(id) {
+      await delRec('cards', id);
+      toast('卡片已删除');
+      loadCards();
+    }
+    async function addCard(front, back) {
+      await addRec('cards', { deckId: state.currentDeckId, front: front, back: back, status: 'new', createdAt: Date.now(), updatedAt: Date.now() });
+    }
+
+    /* ==================== 复习模式 ==================== */
+    function startStudy() {
+      if (!state.cards.length) { toast('该牌组暂无卡片', 'err'); return; }
+      state.study.idx = 0;
+      state.study.list = state.cards.slice();
+      state.study.finished = false;
+      showView('study');
+      renderStudyCard();
+    }
+    function renderStudyCard() {
+      var idx = state.study.idx;
+      var total = state.study.list.length;
+      if (idx >= total) {
+        finishStudy();
+        return;
+      }
+      var c = state.study.list[idx];
+      $('study-front').textContent = c.front;
+      $('study-back').textContent = c.back;
+      $('study-progress').textContent = (idx + 1) + ' / ' + total;
+      $('card-inner').classList.remove('flipped');
+    }
+    async function markStatus(status) {
+      var c = state.study.list[state.study.idx];
+      if (!c) return;
+      c.status = status;
+      c.updatedAt = Date.now();
+      await putRec('cards', c);
+      toast(status === 'mastered' ? '已标记为掌握' : '已标记为待复习', 'ok');
+      nextCard();
+    }
+    function nextCard() {
+      state.study.idx++;
+      renderStudyCard();
+    }
+    function prevCard() {
+      if (state.study.idx > 0) {
+        state.study.idx--;
+        renderStudyCard();
+      } else {
+        toast('已是第一张');
+      }
+    }
+    async function finishStudy() {
+      if (state.study.finished) return;
+      state.study.finished = true;
+      $('study-front').textContent = '🎉 本轮复习完成！';
+      $('study-back').textContent = '返回牌组列表查看统计';
+      $('card-inner').classList.remove('flipped');
+      $('study-progress').textContent = state.study.list.length + ' / ' + state.study.list.length;
+      /* 发放积分：每日每牌组一次 */
+      var today = new Date().toISOString().slice(0, 10);
+      var deckDate = state.currentDeckId + '_' + today;
+      var exists = await new Promise(function (resolve) {
+        var r = tx('rewards', 'readonly').index('deckDate').get(deckDate);
+        r.onsuccess = function () { resolve(!!r.result); };
+        r.onerror = function () { resolve(false); };
+      });
+      if (exists) {
+        toast('今日该牌组积分已领取，继续加油！', 'ok');
+      } else {
+        await addRec('rewards', { deckId: state.currentDeckId, date: today, deckDate: deckDate, points: 10, createdAt: Date.now() });
+        var np = addPoints(10);
+        refreshPoints();
+        toast('🎉 完成一轮复习，+10 积分！当前 ' + np + ' 分', 'ok');
+      }
+    }
+
+    /* ==================== 视图切换 ==================== */
+    function showView(v) {
+      state.view = v;
+      ['decks', 'detail', 'study'].forEach(function (x) {
+        $('view-' + x).classList.toggle('hidden', x !== v);
+      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ==================== 事件绑定 ==================== */
+    function bind() {
+      $('btn-back').addEventListener('click', function () {
+        if (state.view === 'decks') location.href = './index.html';
+        else if (state.view === 'study') { showView('detail'); loadCards(); }
+        else { showView('decks'); loadDecks(); }
+      });
+      $('btn-new-deck').addEventListener('click', function () { openDeckModal(null); });
+      $('btn-back-decks').addEventListener('click', function () { showView('decks'); loadDecks(); });
+      $('btn-study').addEventListener('click', startStudy);
+      $('btn-exit-study').addEventListener('click', function () { showView('detail'); loadCards(); });
+      $('card-scene').addEventListener('click', function () {
+        $('card-inner').classList.toggle('flipped');
+      });
+      $('btn-mark-mastered').addEventListener('click', function () { markStatus('mastered'); });
+      $('btn-mark-review').addEventListener('click', function () { markStatus('review'); });
+      $('btn-prev').addEventListener('click', prevCard);
+      $('btn-next').addEventListener('click', nextCard);
+      $('btn-add-card').addEventListener('click', async function () {
+        var f = $('new-front').value.trim();
+        var b = $('new-back').value.trim();
+        if (!f || !b) { toast('请填写正面和背面', 'err'); return; }
+        await addCard(f, b);
+        $('new-front').value = '';
+        $('new-back').value = '';
+        toast('卡片已添加', 'ok');
+        loadCards();
+      });
+      $('btn-import').addEventListener('click', async function () {
+        var txt = $('import-area').value.trim();
+        if (!txt) { toast('请粘贴内容', 'err'); return; }
+        var lines = txt.split(/\r?\n/).filter(function (l) { return l.trim(); });
+        var n = 0, fail = 0;
+        for (var i = 0; i < lines.length; i++) {
+          var parts = lines[i].split('|');
+          if (parts.length >= 2) {
+            var f = parts[0].trim(), b = parts.slice(1).join('|').trim();
+            if (f && b) { await addCard(f, b); n++; } else fail++;
+          } else fail++;
+        }
+        $('import-area').value = '';
+        toast('成功导入 ' + n + ' 张' + (fail ? '，' + fail + ' 行格式错误' : ''), 'ok');
+        loadCards();
+      });
+      $('modal-mask').addEventListener('click', function (e) { if (e.target === $('modal-mask')) closeModal(); });
+    }
+
+    /* ==================== 启动 ==================== */
+    async function init() {
+      try {
+        db = await openDB();
+      } catch (e) {
+        toast('IndexedDB 初始化失败：' + e.message, 'err');
+        return;
+      }
+      bind();
+      refreshPoints();
+      await loadDecks();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+
+  <div id="page-footer" class="text-center text-[11px] text-slate-500 py-6">
+    <p>记忆闪卡 · 数据存于本地 IndexedDB · 完成复习可获积分</p>
+  </div>
+
+</body>
+</html>
