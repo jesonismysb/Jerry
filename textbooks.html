@@ -264,6 +264,24 @@
     }
     .btn-quiz:hover { filter: brightness(1.1); }
     .btn-quiz:active { transform: scale(.97); }
+    /* 交卷按钮点击反馈增强：按下明显变亮 + 缩小，避免"看不出点没点上" */
+    .btn-quiz:active { transform: scale(.93); filter: brightness(1.35); box-shadow: 0 2px 8px rgba(8, 145, 178, .3); }
+
+    /* ==================== 随机组卷 · 确认弹窗（替代原生 confirm，防被浏览器拦截） ==================== */
+    #exam-confirm-mask {
+      position: fixed; inset: 0; z-index: 90;
+      background: rgba(2, 6, 23, .72); backdrop-filter: blur(3px);
+      display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    #exam-confirm-mask.show { display: flex; }
+    #exam-confirm-box {
+      width: 100%; max-width: 380px;
+      background: rgba(15, 23, 42, .97); border: 1px solid rgba(103, 232, 249, .3);
+      border-radius: 1.1rem; padding: 1.5rem 1.3rem; text-align: center;
+      box-shadow: 0 20px 60px rgba(2, 8, 23, .6);
+      animation: examPop .22s ease both;
+    }
+    @keyframes examPop { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
     .btn-soft {
       display: inline-flex; align-items: center; gap: .4rem;
       font-size: 12.5px; color: var(--c-sub);
@@ -632,6 +650,19 @@
     <div id="drawer-list"></div>
   </div>
 
+  <!-- 随机组卷 · 交卷确认弹窗（页面内弹窗，不用原生 confirm） -->
+  <div id="exam-confirm-mask">
+    <div id="exam-confirm-box">
+      <p class="text-2xl mb-1.5"><i class="fa-solid fa-flag-checkered text-cyan-300"></i></p>
+      <p id="exam-confirm-title" class="text-[14.5px] font-bold t-main"></p>
+      <p id="exam-confirm-tip" class="text-[12.5px] t-sub mt-1.5 leading-relaxed"></p>
+      <div class="flex justify-center gap-2.5 mt-4">
+        <button id="exam-confirm-no" class="btn-soft"><i class="fa-solid fa-xmark"></i>继续答题</button>
+        <button id="exam-confirm-ok" class="btn-quiz"><i class="fa-solid fa-check"></i>确认交卷</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast"></div>
 
@@ -665,6 +696,34 @@
     t.classList.add('show');
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+  }
+
+  /* ---------- 随机组卷调试日志：控制台过滤「随机组卷」即可追踪交卷全链路 ---------- */
+  const EXAM_DEBUG = true;
+  function exlog() {
+    if (!EXAM_DEBUG) return;
+    const args = Array.from(arguments);
+    args.unshift('%c[随机组卷]', 'color:#67e8f9;font-weight:bold');
+    console.log.apply(console, args);
+  }
+  function exerr() {
+    const args = Array.from(arguments);
+    args.unshift('%c[随机组卷 ERROR]', 'color:#fda4af;font-weight:bold');
+    console.error.apply(console, args);
+  }
+
+  /* ---------- 随机组卷 · 页面内确认弹窗（不用原生 confirm：
+     部分浏览器/WebView 会静默拦截 confirm 返回 false，导致点交卷毫无反应） ---------- */
+  let examConfirmCb = null;
+  function examConfirm(title, tipHtml, onOk) {
+    document.getElementById('exam-confirm-title').textContent = title;
+    document.getElementById('exam-confirm-tip').innerHTML = tipHtml;
+    examConfirmCb = onOk || null;
+    document.getElementById('exam-confirm-mask').classList.add('show');
+  }
+  function closeExamConfirm() {
+    document.getElementById('exam-confirm-mask').classList.remove('show');
+    examConfirmCb = null;
   }
   function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -1379,6 +1438,11 @@
         const ch = book.chapters[ci];
         (ch.questions || []).forEach((q, i) => {
           if (!cfg.diffs.includes(q.difficulty || 'base')) return;
+          /* 关键修复：只收「单选 + 判断」两种题型。
+           * 题库扩充后存在 blank/explain/short 等题型（没有 options 字段），
+           * 旧逻辑把非 judge 的题全塞进单选池，导致答题页/复盘渲染
+           * q.options.map(...) 抛 TypeError → 交卷后静默中断、看起来"没反应" */
+          if (q.type !== 'choice' && q.type !== 'judge') return;
           const item = Object.assign({}, q, {
             _i: i, _bookId: bid, _chIdx: ci,
             _bookTitle: book.title, _chTitle: ch.title
@@ -1603,7 +1667,8 @@
       idx: 0,
       start: Date.now(),
       duration: cfg.countdown ? cfg.minutes * 60 : null,
-      timerId: null
+      timerId: null,
+      submitting: false   // 交卷进行中标记（防重复提交）
     };
     renderExamTaking();
     startExamTimer();
@@ -1618,7 +1683,7 @@
       const el = document.getElementById('exam-timer');
       if (st.duration) {
         const left = st.duration - Math.floor((Date.now() - st.start) / 1000);
-        if (left <= 0) { el.textContent = '⏳ 00:00'; submitExam(true); return; }
+        if (left <= 0) { el.textContent = '⏳ 00:00'; exlog('倒计时结束，自动强制交卷（跳过确认弹窗）'); doSubmitExam(true); return; }
         el.textContent = '⏳ ' + fmtTime(left);
         el.classList.toggle('text-rose-400', left <= 60);
         el.classList.toggle('font-bold', left <= 60);
@@ -1639,7 +1704,7 @@
     const total = st.qs.length;
     const q = st.qs[st.idx];
     const isJudge = q.type === 'judge';
-    const opts = isJudge ? ['正确', '错误'] : q.options;
+    const opts = isJudge ? ['正确', '错误'] : (q.options || []);  // 兜底：题库数据异常时不炸渲染
     const d = q.difficulty || 'base';
     const dTxt = d === 'high' ? '拔高' : d === 'mid' ? '中档' : '基础';
     const userPick = st.answers[st.idx];
@@ -1717,22 +1782,63 @@
     document.querySelectorAll('[data-jump]').forEach(btn => {
       btn.addEventListener('click', () => { st.idx = Number(btn.dataset.jump); renderExamTaking(); });
     });
-    document.getElementById('exam-submit').addEventListener('click', () => submitExam(false));
+    /* 交卷按钮不再直接绑定 —— 已改为 document 级事件委托（见 initQuiz），
+     * 避免 DOM 重建导致绑定失效、点击无反应 */
   }
 
-  /** 交卷（可由倒计时自动触发） */
-  function submitExam(auto) {
+  /* ==================== 交卷（两步式，杜绝「点击无反应」） ====================
+   * ① requestExamSubmit：点击交卷 → 统计未答题 → 弹页面内确认弹窗
+   *    （不用原生 confirm —— 原生 confirm 在部分浏览器/WebView 会被静默拦截，
+   *      返回 false 直接 return，表现为“点了没反应”）
+   * ② doSubmitExam：真正判分 → 错题自动收录错题本 → 渲染结果页
+   *    全程 try-catch，任何异常打印 [随机组卷 ERROR] 并 toast 提示，绝不静默失败 */
+  function requestExamSubmit(auto) {
+    exlog('触发交卷', auto ? '（倒计时结束 · 自动交卷）' : '（手动点击交卷按钮）');
+    const st = examState;
+    if (!st || st.phase !== 'taking') { exlog('当前不在答题状态，忽略本次交卷'); return; }
+    if (st.submitting) { exlog('交卷进行中，忽略重复点击'); return; }
+    const unanswered = st.answers.filter(a => a === null).length;
+    exlog('作答校验：共 ' + st.qs.length + ' 题，未答 ' + unanswered + ' 题（允许未答完交卷）');
+    const tip = unanswered > 0
+      ? `还有 <b class="text-amber-400">${unanswered}</b> 道题未作答，未作答按答错计。`
+      : `已完成全部 <b class="text-green-400">${st.qs.length}</b> 题作答。`;
+    examConfirm(
+      '确定提交本次随机组卷试卷？',
+      tip + '<br>交卷后立即自动判分，错题自动收录进错题本。',
+      () => doSubmitExam(false)
+    );
+  }
+
+  function doSubmitExam(auto) {
     const st = examState;
     if (!st || st.phase !== 'taking') return;
-    const unanswered = st.answers.filter(a => a === null).length;
-    if (!auto && unanswered > 0) {
-      if (!confirm('还有 ' + unanswered + ' 道题未作答，确定交卷吗？未作答按答错计。')) return;
+    if (st.submitting) return;
+    st.submitting = true;
+    try {
+      exlog('确认交卷，开始判分…');
+      stopExamTimer();
+      st.phase = 'result';
+      st.autoSubmitted = !!auto;
+      st.usedSecs = Math.floor((Date.now() - st.start) / 1000);
+      // ---- 自动判分：读取全部作答，与题库标准答案对比 ----
+      let correct = 0;
+      st.qs.forEach((q, i) => {
+        const ci = q.type === 'judge' ? (q.answer ? 0 : 1) : q.answer;
+        if (st.answers[i] === ci) correct++;
+      });
+      exlog('判分完成：答对 ' + correct + '/' + st.qs.length + '，正确率 ' + Math.round(correct / st.qs.length * 100) + '%');
+      // ---- 错题自动收录进本地错题本（localStorage，按 key 去重） ----
+      const wrongAdded = examWrongToBook();
+      st.wrongAdded = wrongAdded;
+      exlog('错题自动收录：新增 ' + wrongAdded + ' 道 → localStorage 错题本');
+      renderExamResult();
+      exlog('结果页渲染完成，交卷流程结束 ✓');
+    } catch (e) {
+      exerr('交卷判分流程出现异常：', e && e.message, '\n', e && e.stack);
+      showToast('交卷出现异常：' + (e && e.message ? e.message : e) + '（详见控制台「随机组卷 ERROR」）');
+    } finally {
+      st.submitting = false;
     }
-    stopExamTimer();
-    st.phase = 'result';
-    st.autoSubmitted = !!auto;
-    st.usedSecs = Math.floor((Date.now() - st.start) / 1000);
-    renderExamResult();
   }
 
   /** 复盘选项行 */
@@ -1744,7 +1850,7 @@
         return `<p class="exam-opt-mini ${cls}"><span class="ek">${i === 0 ? '✓' : '✗'}</span>${i === 0 ? '正确' : '错误'}</p>`;
       }).join('');
     }
-    return q.options.map((o, i) => {
+    return (q.options || []).map((o, i) => {
       let cls = '';
       if (i === q.answer) cls = 'ok';
       else if (i === userPick) cls = 'bad';
@@ -1783,10 +1889,10 @@
         <p class="text-[12.5px] t-sub mt-1">答对 ${correct} · 答错/未答 ${wrongN} · 用时 ${fmtTime(st.usedSecs)}</p>
         <p class="text-[13px] t-main mt-1.5">${msg}</p>
         <div class="flex flex-wrap justify-center gap-2.5 mt-5">
-          ${wrongN > 0 ? '<button id="exam-add-wrong" class="btn-quiz"><i class="fa-solid fa-book-bookmark"></i>错题一键加入错题本</button>' : ''}
           <button id="exam-again" class="btn-soft"><i class="fa-solid fa-rotate"></i>同设置再组一套</button>
           <button id="exam-setup" class="btn-soft"><i class="fa-solid fa-sliders"></i>修改设置</button>
         </div>
+        ${wrongN > 0 ? `<p class="text-[11.5px] t-sub mt-3"><i class="fa-solid fa-book-bookmark text-rose-400 mr-1"></i>本次 ${wrongN} 道错题已自动收录进错题本${st.wrongAdded !== undefined && st.wrongAdded < wrongN ? `（新增 ${st.wrongAdded} 道，其余已在错题本中）` : ''}</p>` : ''}
       </div>
 
       <div class="glass-card p-4 sm:p-5">
@@ -1815,15 +1921,15 @@
         }).join('')}
       </div>`;
 
-    const addBtn = document.getElementById('exam-add-wrong');
-    if (addBtn) addBtn.addEventListener('click', examWrongToBook);
     document.getElementById('exam-again').addEventListener('click', generateExam);
     document.getElementById('exam-setup').addEventListener('click', renderExamSetup);
   }
 
-  /** 本次试卷错题 → 统一错题本（按 key 去重，结构与章节错题一致） */
+  /** 本次试卷错题 → 统一错题本（交卷时自动调用；按 key 去重，结构与章节错题一致，存 localStorage）
+   *  返回本次新增条数 */
   function examWrongToBook() {
     const st = examState;
+    if (!st) return 0;
     const list = getWrong();
     let add = 0;
     st.qs.forEach((q, i) => {
@@ -1840,14 +1946,9 @@
         }
       }
     });
-    saveWrong(list);
-    showToast(add ? ('已加入 ' + add + ' 道错题') : '这些错题都已在错题本中');
-    const b = document.getElementById('exam-add-wrong');
-    if (b) {
-      b.disabled = true;
-      b.classList.add('opacity-60');
-      b.innerHTML = '<i class="fa-solid fa-check"></i>已加入错题本';
-    }
+    if (add) saveWrong(list);
+    updateWrongBadge();
+    return add;
   }
 
   /** 返回书架：考试中需确认放弃 */
@@ -1865,6 +1966,29 @@
     document.getElementById('quiz-back').addEventListener('click', exitQuiz);
     document.getElementById('btn-exam').addEventListener('click', openExamSetup);
     document.getElementById('exam-back').addEventListener('click', examBack);
+    /* 交卷按钮：document 级事件委托绑定。
+     * 交卷按钮随 renderExamTaking() 动态重建，直接绑定会随 DOM 重建失效/漏绑；
+     * 委托到 document 后无论按钮怎么重建，点击都能被捕获。 */
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('#exam-submit');
+      if (!btn) return;
+      exlog('捕获交卷按钮点击（事件委托）');
+      requestExamSubmit(false);
+    });
+    /* 确认弹窗按钮（静态 DOM，绑定一次） */
+    document.getElementById('exam-confirm-ok').addEventListener('click', () => {
+      exlog('用户点击「确认交卷」');
+      const cb = examConfirmCb;
+      closeExamConfirm();
+      if (cb) cb();
+    });
+    document.getElementById('exam-confirm-no').addEventListener('click', () => {
+      exlog('用户取消交卷，继续答题');
+      closeExamConfirm();
+    });
+    document.getElementById('exam-confirm-mask').addEventListener('click', e => {
+      if (e.target.id === 'exam-confirm-mask') { exlog('点击遮罩关闭确认弹窗'); closeExamConfirm(); }
+    });
     document.getElementById('btn-wrong').addEventListener('click', () => {
       renderWrongbook();
       showView('wrong');
