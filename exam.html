@@ -285,6 +285,7 @@
       startedAt: 0,
       duration: 45 * 60 * 1000,
       timerId: null,
+      submitting: false,     // 交卷进行中标记（防重复提交）
       result: null
     };
 
@@ -322,6 +323,36 @@
     function fmtDate(ts) {
       var d = new Date(ts);
       return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    /* ==================== 调试日志（[NaraExam] 前缀，方便定位交卷类问题） ====================
+     * 控制台过滤 NaraExam 即可看到完整链路：绑定 → 点击 → 校验 → 判分 → 积分 → 历史 → 渲染
+     * 上线排查完毕后可将 EXAM_DEBUG 改为 false 关闭普通日志（错误日志始终输出） */
+    var EXAM_DEBUG = true;
+    function exlog() {
+      if (!EXAM_DEBUG) return;
+      var args = Array.prototype.slice.call(arguments);
+      args.unshift('%c[NaraExam]', 'color:#67e8f9;font-weight:bold');
+      console.log.apply(console, args);
+    }
+    function exerr() {
+      var args = Array.prototype.slice.call(arguments);
+      args.unshift('%c[NaraExam ERROR]', 'color:#fda4af;font-weight:bold');
+      console.error.apply(console, args);
+    }
+    /* 统一「未作答」判断（进度条与交卷校验共用同一口径，避免"显示已答完却卡校验"）
+     * 规则：undefined/null/纯空白字符串 → 未作答；数组（阅读理解/完形填空）任一空项未答 → 该题未答完 */
+    function isUnanswered(a) {
+      if (a === undefined || a === null) return true;
+      if (typeof a === 'string') return a.trim() === '';
+      if (Array.isArray(a)) {
+        for (var i = 0; i < a.length; i++) {
+          var x = a[i];
+          if (x === undefined || x === null || (typeof x === 'string' && x.trim() === '')) return true;
+        }
+        return false;
+      }
+      return false;
     }
 
     /* ==================== 积分读写（与签到系统互通） ==================== */
@@ -744,8 +775,7 @@
       var qs = state.paper.questions;
       var answered = 0;
       for (var i = 0; i < qs.length; i++) {
-        var a = state.answers[i];
-        if (a !== undefined && a !== null && a !== '' && !(Array.isArray(a) && a.every(function (x) { return x === undefined || x === ''; }))) answered++;
+        if (!isUnanswered(state.answers[i])) answered++;  // 与交卷校验同一口径
       }
       var pct = Math.round(answered / qs.length * 100);
       $('exam-progress').style.width = pct + '%';
@@ -760,7 +790,8 @@
         if (left <= 0) {
           stopTimer();
           toast('考试时间到，自动交卷');
-          submitExam(true);
+          exlog('考试时间到，自动强制交卷（跳过确认弹窗）');
+          doSubmitExam();   // 超时强制交卷：不弹确认窗，直接判分
           return;
         }
         var m = Math.floor(left / 60000);
@@ -773,65 +804,120 @@
       if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
     }
 
-    /* ==================== 交卷判分 ==================== */
-    function submitExam(auto) {
-      if (!auto) {
-        var unanswered = 0;
-        var qs = state.paper.questions;
-        for (var i = 0; i < qs.length; i++) {
-          var a = state.answers[i];
-          if (a === undefined || a === null || a === '' || (Array.isArray(a) && a.some(function (x) { return x === undefined || x === ''; }))) unanswered++;
-        }
-        if (unanswered > 0 && !confirm('还有 ' + unanswered + ' 题未作答，确定交卷吗？')) return;
+    /* ==================== 交卷判分 ====================
+     * 拆成两步，杜绝「点击无反应」：
+     *  ① requestSubmit：点击交卷 → 统计未答题 → 弹页面内确认弹窗（不用原生 confirm，
+     *     原生 confirm 在部分浏览器/WebView 会被静默拦截返回 false，导致直接 return、毫无反应）
+     *  ② doSubmitExam：真正判分 → 积分奖惩 → 存历史 → 跳结果页；全程 try-catch，任何异常
+     *     都会打印 [NaraExam ERROR] 并 toast 提示，绝不静默失败 */
+    function requestSubmit(auto) {
+      exlog('触发交卷', auto ? '（考试时间到 · 自动交卷）' : '（手动点击交卷按钮）');
+      // 试卷数据防御：缺失时明确提示，而不是无反应
+      if (!state.paper || !state.paper.questions || !state.paper.questions.length) {
+        exerr('试卷数据缺失，无法交卷 state.paper =', state.paper);
+        toast('试卷数据异常，请重新开始考试');
+        return;
       }
-      stopTimer();
-      // 判分
+      // 防重复提交
+      if (state.submitting) { exlog('正在交卷中，忽略重复点击'); return; }
+      // 统计未答题（与进度条同一口径 isUnanswered）
       var qs = state.paper.questions;
-      var total = 0, correct = 0, wrongList = [];
-      var graded = qs.map(function (q, i) {
-        var r = gradeQuestion(q, state.answers[i]);
-        total += r.score;
-        if (r.correct) correct++;
-        else wrongList.push(i);
-        return { q: q, userAns: state.answers[i], result: r };
+      var unanswered = 0;
+      for (var i = 0; i < qs.length; i++) {
+        if (isUnanswered(state.answers[i])) unanswered++;
+      }
+      exlog('作答校验：共 ' + qs.length + ' 题，未答完 ' + unanswered + ' 题（允许强制交卷）');
+      // 确认弹窗（页面内弹窗，不会被浏览器拦截）：全部答完 → 简单确认；未答完 → 强制交卷提醒
+      var tip = unanswered > 0
+        ? '还有 <b class="text-amber-300">' + unanswered + '</b> 题未作答，未答题目将按 0 分计。'
+        : '已完成全部 <b class="text-emerald-300">' + qs.length + '</b> 题作答。';
+      showModal(
+        '<div class="text-center">' +
+          '<p class="text-3xl mb-2"><i class="fa-solid fa-flag-checkered text-cyan-300"></i></p>' +
+          '<p class="text-[15px] font-semibold text-slate-100 mb-1">确定交卷？</p>' +
+          '<p class="text-[12.5px] text-slate-400 leading-relaxed mb-1">' + tip + '</p>' +
+          '<p class="text-[11.5px] text-slate-500 mb-4">交卷后立即自动判分并结算积分，不可继续作答。</p>' +
+          '<div class="flex justify-center gap-2">' +
+            '<button id="btn-cancel-submit" class="btn-ghost"><i class="fa-solid fa-xmark"></i>继续答题</button>' +
+            '<button id="btn-confirm-submit" class="btn-primary"><i class="fa-solid fa-check"></i>确认交卷</button>' +
+          '</div>' +
+        '</div>'
+      );
+      $('btn-cancel-submit').addEventListener('click', function () {
+        exlog('用户取消交卷，继续答题');
+        closeModal();
       });
-      var score = Math.min(100, Math.round(total));
-      // 积分奖惩
-      var oldPoints = getPoints();
-      var delta;
-      if (score < 60) delta = -10;
-      else if (score < 80) delta = 10;
-      else if (score < 100) delta = 20;
-      else delta = 30;
-      // 积分为0且要扣分则保持0
-      if (delta < 0 && oldPoints === 0) delta = 0;
-      var newPoints = addPoints(delta);
-      // 历史记录
-      var chapterTitles = state.selected.map(function (ci) {
-        var ch = getChapters(state.subject)[ci];
-        return ch ? ch.title : '';
+      $('btn-confirm-submit').addEventListener('click', function () {
+        exlog('用户点击「确认交卷」，开始判分');
+        closeModal();
+        doSubmitExam();
       });
-      var rec = {
-        id: Date.now(),
-        date: Date.now(),
-        subject: state.subject,
-        subjectName: SUBJECT_CONFIG[state.subject].name,
-        chapters: chapterTitles,
-        score: score,
-        totalQ: qs.length,
-        correctQ: correct,
-        delta: delta,
-        oldPoints: oldPoints,
-        newPoints: newPoints,
-        duration: state.duration,
-        paper: graded.map(function (g) {
-          return { type: g.q._type, q: g.q.q || g.q.passage, options: g.q.options, answer: g.q.answer, alt: g.q.alt, explain: g.q.explain, perQ: g.q._perQ, userAns: g.userAns, score: g.result.score, correct: g.result.correct, qs: g.q.qs, blanks: g.q.blanks, subResults: g.result.subResults };
-        })
-      };
-      addHistory(rec);
-      state.result = { score: score, correct: correct, total: qs.length, delta: delta, oldPoints: oldPoints, newPoints: newPoints, graded: graded };
-      showStep('result');
-      renderResult();
+    }
+
+    function doSubmitExam() {
+      if (state.submitting) { exlog('已有判分在进行，跳过本次调用'); return; }
+      state.submitting = true;
+      try {
+        stopTimer();
+        // ---- 判分 ----
+        var qs = state.paper.questions;
+        var total = 0, correct = 0;
+        var graded = qs.map(function (q, i) {
+          var r = gradeQuestion(q, state.answers[i]);
+          exlog('判分 第' + (i + 1) + '题[' + q._type + '] 用户答案=', state.answers[i], '→ ' + r.score + ' 分', r.correct ? '✓正确' : (r.partial ? '◐部分' : '✗错误'));
+          total += r.score;
+          if (r.correct) correct++;
+          return { q: q, userAns: state.answers[i], result: r };
+        });
+        var score = Math.min(100, Math.round(total));
+        exlog('判分完成：得分 ' + score + '/100，答对 ' + correct + '/' + qs.length);
+        // ---- 积分奖惩 ----
+        var oldPoints = getPoints();
+        var delta;
+        if (score < 60) delta = -10;
+        else if (score < 80) delta = 10;
+        else if (score < 100) delta = 20;
+        else delta = 30;
+        // 积分为0且要扣分则保持0
+        if (delta < 0 && oldPoints === 0) delta = 0;
+        var newPoints = addPoints(delta);
+        exlog('积分结算：' + oldPoints + ' → ' + newPoints + '（' + (delta >= 0 ? '+' : '') + delta + '）');
+        // ---- 历史记录 ----
+        var chapterTitles = state.selected.map(function (ci) {
+          var ch = getChapters(state.subject)[ci];
+          return ch ? ch.title : '';
+        });
+        var rec = {
+          id: Date.now(),
+          date: Date.now(),
+          subject: state.subject,
+          subjectName: SUBJECT_CONFIG[state.subject].name,
+          chapters: chapterTitles,
+          score: score,
+          totalQ: qs.length,
+          correctQ: correct,
+          delta: delta,
+          oldPoints: oldPoints,
+          newPoints: newPoints,
+          duration: state.duration,
+          paper: graded.map(function (g) {
+            return { type: g.q._type, q: g.q.q || g.q.passage, options: g.q.options, answer: g.q.answer, alt: g.q.alt, explain: g.q.explain, perQ: g.q._perQ, userAns: g.userAns, score: g.result.score, correct: g.result.correct, qs: g.q.qs, blanks: g.q.blanks, subResults: g.result.subResults };
+          })
+        };
+        addHistory(rec);
+        exlog('考试历史已保存（id=' + rec.id + '）');
+        // ---- 跳转结果页 ----
+        state.result = { score: score, correct: correct, total: qs.length, delta: delta, oldPoints: oldPoints, newPoints: newPoints, graded: graded };
+        showStep('result');
+        renderResult();
+        exlog('结果页渲染完成，交卷流程结束 ✓');
+      } catch (e) {
+        // 关键：判分/结算/渲染任何环节报错都不允许静默——打印日志并明确提示用户
+        exerr('交卷判分流程出现异常：', e && e.message, '\n', e && e.stack);
+        toast('交卷出现异常：' + (e && e.message ? e.message : e) + '（详见控制台 NaraExam ERROR）');
+      } finally {
+        state.submitting = false;
+      }
     }
 
     function renderResult() {
@@ -1031,6 +1117,7 @@
 
     /* ==================== 事件绑定 ==================== */
     function bindEvents() {
+      exlog('开始绑定页面事件…');
       $('btn-select-all').addEventListener('click', function () {
         $('chapters-list').querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.checked = true; });
         syncSelectedCount();
@@ -1041,13 +1128,23 @@
       });
       $('btn-back-subject').addEventListener('click', function () { showStep('subject'); });
       $('btn-start-exam').addEventListener('click', function () { startExam(); });
-      $('btn-submit').addEventListener('click', function () { submitExam(false); });
+      /* 交卷按钮：document 级事件委托绑定。
+       * 好处：即使按钮所在面板被重新渲染、或直接绑定因时机问题失效，点击仍能被捕获，
+       * 彻底避免「按钮点了没反应」。 */
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest('#btn-submit');
+        if (!btn) return;
+        exlog('捕获交卷按钮点击（事件委托）· disabled =', btn.disabled, '· 可见 =', btn.offsetParent !== null);
+        if (btn.disabled) return;
+        requestSubmit(false);
+      });
       $('btn-result-again').addEventListener('click', function () { showStep('subject'); renderSubjects(); });
       $('btn-result-home').addEventListener('click', function () { location.href = './index.html'; });
       $('btn-result-history').addEventListener('click', function () { showHistory(); });
       $('btn-history').addEventListener('click', function () { showHistory(); });
       $('modal-close').addEventListener('click', closeModal);
       $('modal-mask').addEventListener('click', function (e) { if (e.target === $('modal-mask')) closeModal(); });
+      exlog('页面事件绑定完成 ✓（交卷按钮走 document 事件委托）');
     }
 
     /* ==================== 启动 ==================== */
