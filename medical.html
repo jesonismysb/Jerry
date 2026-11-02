@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="河北省对口升学医学类专业《医学综合习题集（理论）》在线刷题 - 解剖学基础、生理学、药物学基础单选题" />
+  <meta name="theme-color" content="#0b1220" />
+  <title>医学综合习题集（理论） · 奈良</title>
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230e7490'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23a5f3fc' font-family='sans-serif'%3E%E7%9F%A5%3C/text%3E%3C/svg%3E" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+
+  <script>
+    tailwind.config = { theme: { extend: { colors: { accent: '#67e8f9' } } } };
+  </script>
+
+  <style>
+    /* ==================== 主题变量（与教材页同一套深色参数） ==================== */
+    :root {
+      --c-main: #e2e8f0;
+      --c-sub: #94a3b8;
+      --c-border: rgba(148, 197, 255, 0.14);
+      --c-input: rgba(255, 255, 255, 0.05);
+      --c-soft: rgba(103, 232, 249, 0.06);
+    }
+    html, body { height: 100%; overflow-x: hidden; }
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+      background-color: #0b1220;
+      color: var(--c-main);
+      -webkit-tap-highlight-color: transparent;
+      background-image:
+        radial-gradient(1200px 600px at 12% -8%, rgba(8, 145, 178, .18), transparent 60%),
+        radial-gradient(900px 520px at 92% 6%, rgba(124, 58, 237, .14), transparent 62%),
+        radial-gradient(800px 500px at 50% 110%, rgba(13, 148, 136, .12), transparent 60%);
+      background-attachment: fixed;
+    }
+    .t-main { color: var(--c-main); }
+    .t-sub  { color: var(--c-sub); }
+
+    /* 毛玻璃卡片 */
+    .glass-card {
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid var(--c-border);
+      border-radius: 1.25rem;
+      box-shadow: 0 8px 32px rgba(2, 8, 23, 0.35);
+    }
+
+    /* 按钮（与教材页一致） */
+    .btn-quiz {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: 12.5px; color: #ecfeff;
+      padding: .45rem 1rem; border-radius: 999px;
+      background: linear-gradient(to right, rgba(8,145,178,.9), rgba(14,165,233,.9));
+      border: 1px solid rgba(103, 232, 249, .4);
+      box-shadow: 0 5px 16px rgba(8, 145, 178, .25);
+      cursor: pointer; transition: all .25s ease;
+    }
+    .btn-quiz:hover { filter: brightness(1.1); }
+    .btn-quiz:active { transform: scale(.93); filter: brightness(1.35); }
+    .btn-soft {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: 12.5px; color: var(--c-sub);
+      padding: .45rem 1rem; border-radius: 999px;
+      background: var(--c-input); border: 1px solid var(--c-border);
+      cursor: pointer; transition: all .25s ease;
+    }
+    .btn-soft:hover { color: #67e8f9; border-color: rgba(103,232,249,.4); }
+    .btn-soft:active { transform: scale(.96); }
+    .btn-soft.on { color: #67e8f9; border-color: rgba(103,232,249,.55); background: rgba(103,232,249,.08); }
+
+    /* 顶部进度条 */
+    .quiz-bar { height: 6px; border-radius: 999px; background: var(--c-input); overflow: hidden; }
+    .quiz-bar > div { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(to right, #06b6d4, #38bdf8); transition: width .25s ease; }
+
+    /* 选项 */
+    .quiz-opt {
+      width: 100%; display: flex; align-items: flex-start; gap: .65rem;
+      text-align: left; font-size: 13px; line-height: 1.65;
+      padding: .7rem .85rem; border-radius: .8rem; margin-bottom: .55rem;
+      color: var(--c-main); background: var(--c-input);
+      border: 1px solid var(--c-border);
+      transition: all .2s ease; cursor: pointer;
+    }
+    .quiz-opt:hover:not(.disabled) { border-color: rgba(103,232,249,.45); background: rgba(103,232,249,.07); }
+    .quiz-opt.disabled { cursor: default; }
+    .quiz-opt .opt-key {
+      width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700;
+      background: rgba(255,255,255,.08); color: var(--c-sub);
+    }
+    .quiz-opt.correct { border-color: rgba(74,222,128,.65); background: rgba(74,222,128,.10); }
+    .quiz-opt.correct .opt-key { background: rgba(74,222,128,.85); color: #052e16; }
+    .quiz-opt.wrong { border-color: rgba(251,113,133,.65); background: rgba(251,113,133,.10); }
+    .quiz-opt.wrong .opt-key { background: rgba(251,113,133,.85); color: #4c0519; }
+
+    /* 题型徽章 */
+    .type-badge {
+      display: inline-block; font-size: 10.5px; font-weight: 700;
+      padding: .1rem .45rem; border-radius: .35rem; margin-right: .35rem;
+      color: #67e8f9; background: rgba(103,232,249,.12);
+      border: 1px solid rgba(103,232,249,.3); vertical-align: middle;
+    }
+
+    /* 一级分类卡片 */
+    .cat-card { transition: border-color .3s ease, transform .3s ease; }
+    .cat-card:hover { border-color: rgba(103,232,249,.35); }
+
+    /* 章节条目 */
+    .ch-row {
+      display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+      padding: .55rem .7rem; border-radius: .7rem;
+      background: var(--c-input); border: 1px solid var(--c-border);
+    }
+    .ch-no {
+      width: 22px; height: 22px; flex-shrink: 0; border-radius: .45rem;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #67e8f9;
+      background: rgba(103,232,249,.10); border: 1px solid rgba(103,232,249,.25);
+    }
+    .mark-dot { color: #fbbf24; font-size: 11px; }
+
+    /* 书籍封面（与教材页同一风格） */
+    .book-cover {
+      position: relative; overflow: hidden; border-radius: .55rem;
+      aspect-ratio: 3 / 4; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: .5rem;
+      box-shadow: 0 8px 20px rgba(2,8,23,.45);
+    }
+    .book-cover::before {
+      content: ''; position: absolute; left: 6%; top: 0; bottom: 0; width: 3px;
+      background: linear-gradient(to bottom, rgba(255,255,255,.45), rgba(255,255,255,.08));
+    }
+    .book-cover .bc-title { font-size: 10.5px; font-weight: 700; color: #f8fafc; text-align: center; line-height: 1.3; }
+    .book-cover .bc-deco { font-size: 16px; color: rgba(255,255,255,.5); margin: .3rem 0; }
+    .book-cover .bc-pub { font-size: 8px; color: rgba(255,255,255,.72); text-align: center; }
+    .cv-anatomy { background: linear-gradient(150deg,#9d174d 0%,#831843 55%,#500724 100%); }
+    .cv-physiology { background: linear-gradient(150deg,#0e7490 0%,#155e75 55%,#164e63 100%); }
+    .cv-pharmacology { background: linear-gradient(150deg,#7c3aed 0%,#6d28d9 55%,#4c1d95 100%); }
+
+    /* Toast */
+    #toast {
+      position: fixed; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(18px); opacity: 0; pointer-events: none;
+      background: rgba(8,145,178,.94); color: #ecfeff; font-size: 13.5px;
+      padding: 9px 18px; border-radius: 999px; z-index: 90;
+      box-shadow: 0 8px 24px rgba(8,145,178,.4); max-width: 86vw;
+      transition: opacity .3s ease, transform .3s ease;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-item { animation: fadeUp .6s ease both; }
+    #page-footer { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+  </style>
+</head>
+
+<body class="min-h-screen">
+
+  <!-- 顶部导航 -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-slate-950/65 border-b border-white/10">
+    <div class="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+      <a href="./index.html"
+         class="inline-flex items-center gap-2 text-sm text-slate-300 hover:text-cyan-300
+                px-3 py-1.5 rounded-full border border-white/10 bg-white/5
+                hover:bg-cyan-400/20 hover:border-cyan-300/40 transition-all min-w-[86px]">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span class="hidden sm:inline">返回首页</span><span class="sm:hidden">首页</span>
+      </a>
+      <div class="flex-1 flex items-center justify-center gap-2 min-w-0">
+        <i class="fa-solid fa-book-medical text-cyan-300/90"></i>
+        <h1 class="text-sm sm:text-base font-semibold text-slate-100 truncate">医学综合习题集（理论）</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-wrong" title="全局错题本"
+                class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
+                       hover:bg-cyan-400/20 text-slate-300 transition-all relative">
+          <i class="fa-solid fa-book-bookmark"></i>
+          <span id="wrong-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[9px] font-bold px-1 rounded-full leading-none h-4 flex items-center justify-center">0</span>
+        </button>
+        <a href="./textbooks.html" title="教材书架"
+           class="w-9 h-9 rounded-full border border-white/10 bg-white/5 flex items-center justify-center
+                  hover:bg-cyan-400/20 hover:text-cyan-300 text-slate-300 transition-all">
+          <i class="fa-solid fa-book-open"></i>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-5">
+
+    <!-- ==================== 视图：分类目录 ==================== -->
+    <div id="view-main" class="space-y-5">
+      <section class="glass-card p-5 sm:p-6 fade-item">
+        <h2 class="text-base sm:text-lg font-bold t-main leading-snug">
+          河北省对口升学 · <span class="text-cyan-300">医学综合习题集（理论）</span>
+        </h2>
+        <p class="text-[12.5px] t-sub mt-2 leading-relaxed">
+          按书本目录分为 <span class="text-cyan-200">解剖学基础理论习题</span>、
+          <span class="text-cyan-200">生理学专业理论</span>、
+          <span class="text-cyan-200">药物学基础</span> 三个一级分类。
+          每章为单选题（A/B/C/D），支持顺序 / 随机刷题、标记不会，答错自动进入全局错题本。
+        </p>
+        <p class="text-[11.5px] t-sub mt-2 opacity-80">
+          <i class="fa-solid fa-circle-info mr-1"></i>题库分批导入中，暂无题目的章节会提示「待导入」，框架与交互已就绪。
+        </p>
+      </section>
+
+      <div id="cat-list" class="space-y-4"></div>
+    </div>
+
+    <!-- ==================== 视图：章节刷题 ==================== -->
+    <div id="view-quiz" class="hidden space-y-4">
+      <div class="glass-card p-4 sm:p-5">
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="quiz-back" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回目录</button>
+          <h2 id="quiz-title" class="text-sm sm:text-base font-bold t-main min-w-0 truncate"></h2>
+          <span id="quiz-mode" class="text-[11px] t-sub shrink-0"></span>
+          <span id="quiz-progress" class="ml-auto text-xs t-sub shrink-0"></span>
+        </div>
+        <div class="quiz-bar mt-3"><div id="quiz-bar-fill"></div></div>
+      </div>
+      <div id="quiz-body"></div>
+    </div>
+
+    <!-- ==================== 视图：全局错题本 ==================== -->
+    <div id="view-wrong" class="hidden space-y-4">
+      <div class="glass-card p-4 sm:p-5">
+        <div class="flex items-center gap-3 flex-wrap">
+          <button id="wrong-back" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回目录</button>
+          <h2 class="text-sm sm:text-base font-bold t-main"><i class="fa-solid fa-book-bookmark text-rose-400 mr-1.5"></i>全局错题本</h2>
+          <span id="wrong-count" class="text-xs t-sub"></span>
+          <button id="wrong-restart" class="btn-quiz ml-auto"><i class="fa-solid fa-rotate"></i>重刷错题</button>
+        </div>
+      </div>
+      <div id="wrong-list"></div>
+    </div>
+
+    <footer id="page-footer" class="text-center text-xs text-slate-500 pt-2">
+      <p>© <span id="footer-year"></span> 奈良 · <a href="./index.html" class="hover:text-cyan-300 transition-colors">返回导航主页</a></p>
+    </footer>
+  </main>
+
+  <div id="toast"></div>
+
+  <script src="./medical-data.js"></script>
+  <script>
+  /* ==================================================================
+   *  医学综合习题集 · 章节刷题（纯前端，localStorage）
+   *  - 题库：medical-data.js → window.MEDICAL
+   *  - 错题本：与教材页共用 zz_textbook_wrongbook（同一结构，互相打通）
+   *  - 标记：med_marks_v1（按 分类:章节 记录题目下标）
+   * ================================================================== */
+  (function () {
+    'use strict';
+
+    const MED = window.MEDICAL;
+    const LS_WRONG = 'zz_textbook_wrongbook';   // 与 textbooks.html 完全一致
+    const LS_MARKS = 'med_marks_v1';
+
+    /* ---------------- 工具 ---------------- */
+    let toastTimer = null;
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+    }
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+    function fmtTime(s) {
+      return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+    }
+
+    /* ---------------- 存储：错题本（与教材页共用） ---------------- */
+    function getWrong() {
+      try { return JSON.parse(localStorage.getItem(LS_WRONG)) || []; } catch (e) { return []; }
+    }
+    function saveWrong(list) {
+      try { localStorage.setItem(LS_WRONG, JSON.stringify(list)); } catch (e) {}
+      updateWrongBadge();
+    }
+    function addWrong(q, cat, chIdx, qIdx) {
+      const list = getWrong();
+      const key = 'med:' + cat.id + ':' + chIdx + ':' + qIdx;
+      if (list.some(w => w.key === key)) return false;
+      list.unshift({
+        key, type: 'choice',
+        q: q.q, options: q.options || null,
+        answer: q.answer, explain: q.explain || '',
+        where: cat.short + ' · ' + cat.chapters[chIdx].title,
+        ts: Date.now()
+      });
+      saveWrong(list);
+      return true;
+    }
+    function updateWrongBadge() {
+      const n = getWrong().length;
+      const badge = document.getElementById('wrong-badge');
+      badge.textContent = n > 99 ? '99+' : n;
+      badge.classList.toggle('hidden', !n);
+    }
+
+    /* ---------------- 存储：标记不会 ---------------- */
+    function loadMarks() {
+      try { return JSON.parse(localStorage.getItem(LS_MARKS)) || {}; } catch (e) { return {}; }
+    }
+    function saveMarks(m) {
+      try { localStorage.setItem(LS_MARKS, JSON.stringify(m)); } catch (e) {}
+    }
+    function markKey(catId, chIdx) { return catId + ':' + chIdx; }
+    function isMarked(catId, chIdx, qIdx) {
+      const m = loadMarks()[markKey(catId, chIdx)] || [];
+      return m.includes(qIdx);
+    }
+    function toggleMark(catId, chIdx, qIdx) {
+      const all = loadMarks();
+      const k = markKey(catId, chIdx);
+      const arr = all[k] || [];
+      const at = arr.indexOf(qIdx);
+      if (at >= 0) arr.splice(at, 1);
+      else arr.push(qIdx);
+      all[k] = arr;
+      saveMarks(all);
+      return at < 0;
+    }
+    function markedCount(catId, chIdx) {
+      return (loadMarks()[markKey(catId, chIdx)] || []).length;
+    }
+
+    /* ---------------- 视图切换 ---------------- */
+    function showView(name) {
+      document.getElementById('view-main').classList.toggle('hidden', name !== 'main');
+      document.getElementById('view-quiz').classList.toggle('hidden', name !== 'quiz');
+      document.getElementById('view-wrong').classList.toggle('hidden', name !== 'wrong');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ---------------- 目录渲染 ---------------- */
+    function coverHTML(cat) {
+      return `
+        <div class="book-cover ${cat.cover}">
+          <p class="bc-title">${esc(cat.title)}</p>
+          <i class="bc-deco ${cat.deco}"></i>
+          <p class="bc-pub">医学综合习题集</p>
+        </div>`;
+    }
+
+    function renderMain() {
+      const box = document.getElementById('cat-list');
+      if (!MED || !MED.categories) {
+        box.innerHTML = '<div class="glass-card p-8 text-center text-sm t-sub">题库数据加载失败，请检查 medical-data.js</div>';
+        return;
+      }
+      box.innerHTML = MED.categories.map((cat, ci) => {
+        const totalQ = MED.countQuestions(cat);
+        return `
+        <section class="glass-card cat-card p-4 sm:p-5 fade-item" style="animation-delay:${ci * 0.06}s">
+          <div class="flex items-center gap-3.5 flex-wrap">
+            <div class="w-14 sm:w-16 shrink-0">${coverHTML(cat)}</div>
+            <div class="min-w-[180px] flex-1">
+              <h3 class="text-sm sm:text-[15px] font-bold t-main">${esc(cat.title)}</h3>
+              <p class="text-[11.5px] t-sub mt-0.5">
+                ${cat.chapters.length} 章 · 已导入
+                <span class="${totalQ ? 'text-cyan-300' : 'text-slate-500'} font-semibold">${totalQ}</span> 题
+              </p>
+            </div>
+          </div>
+          <div class="mt-3.5 space-y-1.5">
+            ${cat.chapters.map((ch, chi) => {
+              const n = (ch.questions || []).length;
+              const mk = markedCount(cat.id, chi);
+              return `
+              <div class="ch-row">
+                <span class="ch-no">${chi + 1}</span>
+                <span class="text-[12.5px] t-main min-w-0 flex-1 truncate">${esc(ch.title)}</span>
+                ${mk ? `<span class="mark-dot"><i class="fa-solid fa-bookmark"></i> ${mk}</span>` : ''}
+                <span class="text-[11px] ${n ? 'text-cyan-300' : 'text-slate-500'} shrink-0">${n ? n + ' 题' : '待导入'}</span>
+                <div class="flex gap-1.5 shrink-0">
+                  <button class="btn-soft !py-1 !px-2.5 !text-[11px]" data-open data-cat="${cat.id}" data-ch="${chi}" data-mode="seq">
+                    <i class="fa-solid fa-list-ol"></i>顺序</button>
+                  <button class="btn-soft !py-1 !px-2.5 !text-[11px]" data-open data-cat="${cat.id}" data-ch="${chi}" data-mode="rand">
+                    <i class="fa-solid fa-shuffle"></i>随机</button>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </section>`;
+      }).join('');
+
+      /* 章节按钮：事件委托（按钮随数据渲染，不直接绑定） */
+      box.onclick = function (e) {
+        const btn = e.target.closest('[data-open]');
+        if (!btn) return;
+        openChapter(btn.dataset.cat, Number(btn.dataset.ch), btn.dataset.mode);
+      };
+    }
+
+    /* ---------------- 刷题状态 ---------------- */
+    let quiz = null;
+    /* quiz = { cat, catId, chIdx, mode, qs, idx, picks:[], markedSaved, startTime, timerId } */
+
+    function openChapter(catId, chIdx, mode) {
+      const cat = MED.categories.find(c => c.id === catId);
+      if (!cat) return;
+      const ch = cat.chapters[chIdx];
+      const pool = (ch.questions || []).map((q, i) => Object.assign({}, q, { _i: i }));
+      if (!pool.length) { showToast('本章题库待导入，框架已就绪～'); return; }
+
+      const m = mode === 'rand' ? 'rand' : 'seq';
+      const qs = m === 'rand' ? shuffle(pool.slice()) : pool.slice();
+      quiz = {
+        cat, catId, chIdx, mode: m,
+        qs, idx: 0,
+        picks: new Array(qs.length).fill(undefined),
+        startTime: Date.now(), timerId: null
+      };
+      document.getElementById('quiz-title').textContent = cat.title + ' · ' + ch.title;
+      document.getElementById('quiz-mode').textContent = quiz.mode === 'rand' ? '（随机）' : '（顺序）';
+      showView('quiz');
+      renderQuiz();
+    }
+
+    function renderQuiz() {
+      const st = quiz;
+      if (!st) return;
+      if (st.idx >= st.qs.length) { renderSummary(); return; }
+
+      const q = st.qs[st.idx];
+      const picked = st.picks[st.idx];
+      const answeredN = st.picks.filter(x => x !== undefined).length;
+      document.getElementById('quiz-progress').textContent =
+        `第 ${st.idx + 1} / ${st.qs.length} 题 · 已答 ${answeredN}`;
+      document.getElementById('quiz-bar-fill').style.width = (answeredN / st.qs.length * 100) + '%';
+
+      const options = q.options || [];
+      document.getElementById('quiz-body').innerHTML = `
+        <div class="glass-card p-4 sm:p-5 fade-item">
+          <p class="text-[13.5px] sm:text-sm font-semibold t-main leading-relaxed">
+            <span class="type-badge">单选题</span>${st.idx + 1}. ${esc(q.q)}
+          </p>
+          <div class="mt-3.5">
+            ${options.map((o, i) => {
+              let cls = '';
+              if (picked !== undefined) {
+                cls = 'disabled';
+                if (i === q.answer) cls += ' correct';
+                else if (i === picked) cls += ' wrong';
+              }
+              return `<button class="quiz-opt ${cls}" data-opt="${i}">
+                <span class="opt-key">${'ABCD'[i]}</span>
+                <span>${esc(o)}</span>
+              </button>`;
+            }).join('')}
+          </div>
+          <div id="quiz-explain" class="hidden"></div>
+          <div class="mt-3 flex items-center justify-between gap-2 flex-wrap">
+            <button id="quiz-mark" class="btn-soft ${isMarked(st.catId, st.chIdx, q._i) ? 'on' : ''}">
+              <i class="fa-${isMarked(st.catId, st.chIdx, q._i) ? 'solid' : 'regular'} fa-bookmark"></i>
+              ${isMarked(st.catId, st.chIdx, q._i) ? '已标记不会' : '标记不会'}
+            </button>
+            <div class="flex gap-2">
+              ${st.idx > 0 ? '<button id="quiz-prev" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>上一题</button>' : ''}
+              <button id="quiz-next" class="btn-quiz">
+                ${st.idx + 1 === st.qs.length ? '完成本章' : '下一题'} <i class="fa-solid fa-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>`;
+
+      document.querySelectorAll('#quiz-body .quiz-opt').forEach(btn => {
+        btn.addEventListener('click', () => answer(Number(btn.dataset.opt)));
+      });
+      document.getElementById('quiz-mark').addEventListener('click', () => {
+        toggleMark(st.catId, st.chIdx, q._i);
+        renderQuiz();
+      });
+      const prev = document.getElementById('quiz-prev');
+      if (prev) prev.addEventListener('click', () => { st.idx--; renderQuiz(); });
+      document.getElementById('quiz-next').addEventListener('click', () => {
+        st.idx++;
+        renderQuiz();
+      });
+
+      if (picked !== undefined) showExplain(q, picked);
+    }
+
+    function showExplain(q, picked) {
+      const box = document.getElementById('quiz-explain');
+      if (!box) return;
+      const right = picked === q.answer;
+      box.className = right ? 'mt-3 rounded-xl p-3' : 'mt-3 rounded-xl p-3';
+      box.style.background = right ? 'rgba(74,222,128,.08)' : 'rgba(251,113,133,.08)';
+      box.style.border = '1px solid ' + (right ? 'rgba(74,222,128,.35)' : 'rgba(251,113,133,.35)');
+      box.innerHTML = `
+        <p class="text-[12.5px] ${right ? 'text-green-400' : 'text-rose-400'} font-semibold">
+          <i class="fa-solid ${right ? 'fa-circle-check' : 'fa-circle-xmark'} mr-1"></i>
+          ${right ? '回答正确' : '回答错误'} · 正确答案 ${'ABCD'[q.answer]}
+        </p>
+        <p class="text-[12px] t-sub mt-1.5 leading-relaxed">
+          <span class="text-cyan-300">解析：</span>${esc(q.explain || '暂无解析')}
+        </p>`;
+    }
+
+    function answer(pick) {
+      const st = quiz;
+      if (!st) return;
+      if (st.picks[st.idx] !== undefined) return;   // 已作答，不可改
+      st.picks[st.idx] = pick;
+      const q = st.qs[st.idx];
+      /* 错题重刷模式不再重复写入错题本 */
+      if (pick !== q.answer && st.mode !== 'wrong') addWrong(q, st.cat, st.chIdx, q._i);
+      renderQuiz();
+    }
+
+    function renderSummary() {
+      const st = quiz;
+      const total = st.qs.length;
+      let correct = 0;
+      st.qs.forEach((q, i) => { if (st.picks[i] === q.answer) correct++; });
+      const pct = Math.round(correct / total * 100);
+      const secs = Math.floor((Date.now() - st.startTime) / 1000);
+      const markedN = markedCount(st.catId, st.chIdx);
+      const msg = pct >= 90 ? '优秀！对口升学稳了 🎉'
+        : pct >= 75 ? '很不错，继续保持 💪'
+          : pct >= 60 ? '及格啦，错题记得回看 📖'
+            : '别灰心，错题本帮你查漏补缺 🌱';
+
+      document.getElementById('quiz-progress').textContent = '本章已完成';
+      document.getElementById('quiz-bar-fill').style.width = '100%';
+      document.getElementById('quiz-body').innerHTML = `
+        <div class="glass-card p-6 sm:p-8 text-center fade-item">
+          <p class="text-4xl font-black ${pct >= 60 ? 'text-cyan-300' : 'text-rose-400'}">${pct}<span class="text-lg">%</span></p>
+          <p class="text-[13px] t-sub mt-2">共 ${total} 题 · 答对 ${correct} · 答错/未答 ${total - correct}</p>
+          <p class="text-[13px] t-sub mt-1"><i class="fa-regular fa-clock mr-1"></i>用时 ${fmtTime(secs)}${markedN ? ` · 标记不会 ${markedN} 题` : ''}</p>
+          <p class="text-[13px] t-main mt-1.5">${msg}</p>
+          ${total - correct > 0 ? '<p class="text-[11.5px] t-sub mt-1">答错的题目已自动存入全局错题本</p>' : ''}
+          <div class="flex flex-wrap justify-center gap-2.5 mt-5">
+            <button id="quiz-again" class="btn-quiz"><i class="fa-solid fa-rotate"></i>${st.mode === 'rand' ? '再随机一套' : '从头再刷'}</button>
+            <button id="quiz-goback" class="btn-soft"><i class="fa-solid fa-arrow-left"></i>返回目录</button>
+          </div>
+        </div>`;
+
+      document.getElementById('quiz-again').addEventListener('click', () => {
+        if (st.mode === 'wrong') { startWrongQuiz(); return; }
+        openChapter(st.catId, st.chIdx, st.mode);
+      });
+      document.getElementById('quiz-goback').addEventListener('click', () => {
+        quiz = null;
+        renderMain();
+        showView('main');
+      });
+    }
+
+    /* ---------------- 错题本 ---------------- */
+    function renderWrongbook() {
+      const list = getWrong();
+      document.getElementById('wrong-count').textContent = list.length ? `共 ${list.length} 题` : '空空如也';
+      document.getElementById('wrong-restart').style.display = list.length ? '' : 'none';
+      const box = document.getElementById('wrong-list');
+
+      if (!list.length) {
+        box.innerHTML = '<div class="glass-card p-8 text-center text-sm t-sub">错题本还是空的～刷题时答错的题目会自动收进来 📒</div>';
+        return;
+      }
+      box.innerHTML = list.map(w => {
+        const isJudge = w.type === 'judge';
+        const isChoice = Array.isArray(w.options);
+        const opts = isJudge ? ['正确', '错误'] : (isChoice ? w.options : []);
+        const correctIdx = isJudge ? (w.answer ? 0 : 1) : w.answer;
+        const typeTxt = isJudge ? '判断题' : isChoice ? '单选题' : '文本题';
+        const ansTxt = isJudge
+          ? (w.answer ? '正确' : '错误')
+          : isChoice
+            ? ('ABCD'[w.answer] + '. ' + esc(w.options[w.answer] || ''))
+            : esc(w.answer);
+        return `
+        <div class="glass-card p-4 sm:p-5 fade-item">
+          <p class="text-[11px] t-sub mb-1.5"><i class="fa-solid fa-location-dot mr-1 opacity-60"></i>${esc(w.where || '')}</p>
+          <p class="text-[13px] t-main font-semibold leading-relaxed">
+            <span class="type-badge">${typeTxt}</span>${esc(w.q)}
+          </p>
+          <div class="mt-2 space-y-1">
+            ${opts.map((o, i) => `
+              <p class="text-[12px] leading-relaxed ${i === correctIdx ? 'text-green-400' : 't-sub'}">
+                <span class="inline-block w-4">${isJudge ? (i === 0 ? '✓' : '✗') : 'ABCD'[i]}</span>${esc(o)}
+              </p>`).join('')}
+          </div>
+          <p class="text-[12px] text-green-400 mt-2">正确答案：${ansTxt}</p>
+          ${w.explain ? `<p class="text-[12px] t-sub mt-1 leading-relaxed">解析：${esc(w.explain)}</p>` : ''}
+          <button class="btn-soft mt-2.5 !py-1 !px-3 !text-[11.5px]" data-remove="${esc(w.key)}">
+            <i class="fa-solid fa-check"></i>已掌握，移出</button>
+        </div>`;
+      }).join('');
+
+      /* 移出错题：事件委托 */
+      box.onclick = function (e) {
+        const btn = e.target.closest('[data-remove]');
+        if (!btn) return;
+        saveWrong(getWrong().filter(w => w.key !== btn.dataset.remove));
+        renderWrongbook();
+        showToast('已移出错题本');
+      };
+    }
+
+    /* 重刷错题：把错题本转成一套题（兼容书中判断题结构） */
+    function startWrongQuiz() {
+      const list = getWrong().filter(w => w.type === 'judge' || Array.isArray(w.options));
+      if (!list.length) { showToast('错题本暂无可重刷的客观题～'); return; }
+      const qs = shuffle(list.map((w, i) => ({
+        q: w.q,
+        options: w.type === 'judge' ? ['正确', '错误'] : (w.options || []),
+        answer: w.type === 'judge' ? (w.answer ? 0 : 1) : w.answer,
+        explain: w.explain || '',
+        _i: i,
+        _wrongKey: w.key
+      })));
+      quiz = {
+        cat: { id: 'wrong', short: '错题本', chapters: [{ title: '重刷错题' }] },
+        catId: 'wrong', chIdx: 0, mode: 'wrong',
+        qs, idx: 0,
+        picks: new Array(qs.length).fill(undefined),
+        startTime: Date.now(), timerId: null
+      };
+      document.getElementById('quiz-title').textContent = '错题重刷';
+      document.getElementById('quiz-mode').textContent = '（错题本）';
+      showView('quiz');
+      renderQuiz();
+    }
+
+    /* ---------------- 绑定 ---------------- */
+    document.getElementById('quiz-back').addEventListener('click', () => {
+      quiz = null;
+      renderMain();
+      showView('main');
+    });
+    document.getElementById('btn-wrong').addEventListener('click', () => {
+      renderWrongbook();
+      showView('wrong');
+    });
+    document.getElementById('wrong-back').addEventListener('click', () => showView('main'));
+    document.getElementById('wrong-restart').addEventListener('click', startWrongQuiz);
+    document.getElementById('wrong-badge').addEventListener('click', () => {
+      renderWrongbook();
+      showView('wrong');
+    });
+
+    /* ---------------- 初始化 ---------------- */
+    document.getElementById('footer-year').textContent = new Date().getFullYear();
+    renderMain();
+    updateWrongBadge();
+  })();
+  </script>
+</body>
+</html>

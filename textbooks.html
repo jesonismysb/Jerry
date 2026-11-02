@@ -558,6 +558,20 @@
       </div>
     </section>
 
+    <!-- 医学综合习题集入口 -->
+    <section class="glass-card p-4 sm:p-5 fade-item" style="border-color:rgba(167,139,250,.35)">
+      <div class="flex items-center gap-3.5 flex-wrap">
+        <div class="w-11 h-11 rounded-xl bg-violet-400/15 text-violet-300 flex items-center justify-center text-lg shrink-0">
+          <i class="fa-solid fa-book-medical"></i>
+        </div>
+        <div class="min-w-[200px] flex-1">
+          <h3 class="text-sm sm:text-[15px] font-bold t-main">医学综合习题集（理论）</h3>
+          <p class="text-[12px] t-sub mt-0.5 leading-relaxed">河北省对口升学医学类专业 · 解剖学基础理论习题 / 生理学专业理论 / 药物学基础，三科目录分层单选刷题</p>
+        </div>
+        <a href="./medical.html" class="btn-quiz shrink-0"><i class="fa-solid fa-arrow-right"></i>进入板块</a>
+      </div>
+    </section>
+
     <!-- 随机组卷入口 -->
     <section class="glass-card p-4 sm:p-5 fade-item" style="border-color:rgba(103,232,249,.30)">
       <div class="flex items-center gap-3.5 flex-wrap">
@@ -566,7 +580,7 @@
         </div>
         <div class="min-w-[200px] flex-1">
           <h3 class="text-sm sm:text-[15px] font-bold t-main">随机组卷 · 跨教材模拟考试</h3>
-          <p class="text-[12px] t-sub mt-0.5 leading-relaxed">自由勾选 6 本教材的章节，自定义单选/判断题数量与难度，支持倒计时、标记不会、自动批改与错题收录</p>
+          <p class="text-[12px] t-sub mt-0.5 leading-relaxed">自由勾选各本教材（含医学综合习题集）的章节，自定义单选/判断题数量与难度，支持倒计时、标记不会、自动批改与错题收录</p>
         </div>
         <button id="btn-exam" class="btn-quiz shrink-0"><i class="fa-solid fa-file-pen"></i>开始组卷</button>
       </div>
@@ -667,6 +681,7 @@
   <div id="toast"></div>
 
   <script src="./books-data.js"></script>
+  <script src="./medical-data.js"></script>
   <script>
   /* ==================================================================
    *  教材数据（框架先行，笔记可持续补充）
@@ -1368,12 +1383,14 @@
     saveWrong(list);
   }
 
-  /** 错题 → 刷题题池 */
+  /** 错题 → 刷题题池（跳过无选项的历史文本题，避免重刷渲染异常） */
   function wrongPool() {
-    return getWrong().map(w => ({
-      type: w.type, q: w.q, options: w.options, answer: w.answer,
-      explain: w.explain, _key: w.key, _where: w.where
-    }));
+    return getWrong()
+      .filter(w => w.type === 'judge' || Array.isArray(w.options))
+      .map(w => ({
+        type: w.type, q: w.q, options: w.options, answer: w.answer,
+        explain: w.explain, _key: w.key, _where: w.where
+      }));
   }
 
   /** 渲染错题本列表 */
@@ -1387,16 +1404,28 @@
       box.innerHTML = `<div class="glass-card p-8 text-center text-sm t-sub">错题本还是空的～刷题时答错的题目会自动收进来 📒</div>`;
       return;
     }
-    box.innerHTML = list.map(w => `
+    box.innerHTML = list.map(w => {
+      /* 兼容历史错题：旧版随机组卷可能收录过填空/名词解释等题型（无 options、answer 为文本），
+       * 此处统一降级展示，避免 w.options[...] 抛错导致整个错题本列表渲染为空 */
+      const isJudge = w.type === 'judge';
+      const isChoice = Array.isArray(w.options);
+      const typeTxt = isJudge ? '判断' : isChoice ? '单选' : '文本题';
+      const ansTxt = isJudge
+        ? (w.answer ? '正确' : '错误')
+        : isChoice
+          ? ('ABCD'[w.answer] + '. ' + esc(w.options[w.answer] || ''))
+          : esc(w.answer);
+      return `
       <div class="wrong-item">
         <p class="text-[11px] t-sub mb-1.5"><i class="fa-solid fa-location-dot mr-1 opacity-60"></i>${esc(w.where)} · ${new Date(w.ts).toLocaleDateString('zh-CN')}</p>
         <p class="text-[13px] t-main font-semibold leading-relaxed">
-          <span class="type-badge ${w.type === 'judge' ? 'judge' : ''}">${w.type === 'judge' ? '判断' : '单选'}</span>${esc(w.q)}
+          <span class="type-badge ${isJudge ? 'judge' : ''}">${typeTxt}</span>${esc(w.q)}
         </p>
-        <p class="text-[12.5px] mt-2 text-green-400">正确答案：${w.type === 'judge' ? (w.answer ? '正确' : '错误') : ('ABCD'[w.answer] + '. ' + esc(w.options[w.answer]))}</p>
+        <p class="text-[12.5px] mt-2 text-green-400">正确答案：${ansTxt}</p>
         ${w.explain ? `<p class="text-[12px] t-sub mt-1 leading-relaxed">解析：${esc(w.explain)}</p>` : ''}
         <button class="btn-soft mt-2.5 !py-1 !px-3 !text-[11.5px]" data-remove="${esc(w.key)}"><i class="fa-solid fa-check"></i>已掌握，移出</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     box.querySelectorAll('[data-remove]').forEach(b => {
       b.addEventListener('click', () => {
